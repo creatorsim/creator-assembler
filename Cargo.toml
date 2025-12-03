@@ -1,9 +1,9 @@
 [package]
-name = "creator-compiler"
+name = "creator-assembler"
 version = "2.0.0"
 edition = "2021"
 license = "LGPL-2.1-or-later"
-description = "A reimplementation of Creator (https://creatorsim.github.io/)'s compiler"
+description = "A reimplementation of Creator (https://creatorsim.github.io/)'s assembler"
 categories = ["command-line-utilities", "compilers"]
 keywords = ["compiler", "assembly", "assembler", "Creator"]
 rust-version = "1.89"
@@ -17,7 +17,7 @@ crate-type = [
 ]
 
 [[bin]]
-name = "creator-compiler"
+name = "creator-assembler"
 required-features = ["cli"]
 
 [features]

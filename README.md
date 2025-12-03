@@ -1,6 +1,6 @@
-# Creator Compiler
+# CREATOR Assembler
 
-Reimplementation of the compiler used by [Creator](https://creatorsim.github.io/)
+Reimplementation of the assembler used by [CREATOR](https://creatorsim.github.io/)
 to have better performance, more helpful error messages, and a more correct output.
 
 ## Building
@@ -11,20 +11,20 @@ The only requirement is the rust toolchain, which can be installed through [`rus
 
 ### Running locally (CLI)
 
-The compiler can be built from source using `cargo build --release`, which will
-place the binary in `./target/release/creator-compiler`. The `--release` flag can
+The assembler can be built from source using `cargo build --release`, which will
+place the binary in `./target/release/creator-assembler`. The `--release` flag can
 be omitted to generate debug binaries. Additionally, `cargo run --release -- [<ARGS>]`
 can be used as a shortcut to build and run the binary. Running the application
 without arguments provides a short description of the application and subcommands,
-and using `creator-compiler help <command>` provides a description and usage
+and using `creator-assembler help <command>` provides a description and usage
 instructions for each command.
 
-The compiler currently supports 3 modes of execution:
+The assembler currently supports 3 modes of execution:
 
-- Print architecture specification schema to `stdout`: `creator-compiler schema`
-- Validate architecture specification file: `creator-compiler validate <architecture.json>`
+- Print architecture specification schema to `stdout`: `creator-assembler schema`
+- Validate architecture specification file: `creator-assembler validate <architecture.json>`
 - Compile assembly input and print the result to `stdout`:
-  `creator-compiler compile <architecture.json> <assembly.s>`
+  `creator-assembler compile <architecture.json> <assembly.s>`
   - The `-v`/`--verbose` flag can be used to also print the parsed AST
 
 ### JS Bindings
@@ -46,4 +46,4 @@ use the generated package, both for the web and Node.js:
   which allows loading the page at `localhost:8080/js_example`.
 - `web.js`: main module for the web example, shows how to load the package in the web
 - `node.js`: main module for the Node.js example, shows how to load the package in Node.js
-- `compiler.mjs`: module responsible for interaction with the package, shows how to use the provided API
+- `assembler.mjs`: module responsible for interaction with the package, shows how to use the provided API

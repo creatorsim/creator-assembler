@@ -224,7 +224,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "creator-compiler"
+name = "creator-assembler"
 version = "2.0.0"
 dependencies = [
  "ansi-to-html",

@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::hint::black_box;
 use std::time::Duration;
 
-use creator_compiler::parser::AST;
-use creator_compiler::prelude::*;
+use creator_assembler::parser::AST;
+use creator_assembler::prelude::*;
 
 static ARCH_JSON: &str = include_str!("arch.json");
 static CODE: &str = include_str!("sample.s");

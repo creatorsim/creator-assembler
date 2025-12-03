@@ -21,10 +21,10 @@
 #![doc = include_str!("../README.md")]
 //! # Example
 //!
-//! Example usage of the compiler from Rust:
+//! Example usage of the assembler from Rust:
 //!
 //! ```
-//! use creator_compiler::prelude::*;
+//! use creator_assembler::prelude::*;
 //! use std::collections::HashMap;
 //!
 //! let arch_json = include_str!("../tests/architecture.json");

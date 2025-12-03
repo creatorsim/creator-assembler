@@ -32,7 +32,7 @@ function BuildFull() {
 
 
 function Help() {
-    printf "Builds the compiler for usage in WebAssembly
+    printf "Builds the assembler for usage in WebAssembly
 
 Usage: \`./build.sh <command>\`
 

@@ -26,7 +26,7 @@ use clap::{Parser, Subcommand};
 
 use num_bigint::BigUint;
 
-use creator_compiler::prelude::*;
+use creator_assembler::prelude::*;
 
 /// Command-line arguments parser
 #[derive(Parser)]
