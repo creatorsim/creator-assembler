@@ -202,6 +202,7 @@ macro_rules! parse_with {
         }()
     }};
 }
+#[allow(unused_imports)] // This is used below, but clippy doesn't seem to detect it
 use parse_with;
 
 /// Parses the input creating an abstract syntax tree

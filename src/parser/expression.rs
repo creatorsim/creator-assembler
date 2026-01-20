@@ -107,16 +107,16 @@ pub enum Expr {
         /// Operation to perform
         op: Spanned<UnaryOp>,
         /// Operand to perform the operation on
-        operand: Box<Spanned<Expr>>,
+        operand: Box<Spanned<Self>>,
     },
     /// Binary operation on other expressions
     BinaryOp {
         /// Operation to perform
         op: Spanned<BinaryOp>,
         /// Left operand of the operation
-        lhs: Box<Spanned<Expr>>,
+        lhs: Box<Spanned<Self>>,
         /// Right operand of the operation
-        rhs: Box<Spanned<Expr>>,
+        rhs: Box<Spanned<Self>>,
     },
 }
 
