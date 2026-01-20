@@ -144,12 +144,19 @@ where
     // Instruction: `instruction -> ident [^\n]*`
     let instruction = ident
         .then(
-            any()
-                .and_is(newline().not())
+            none_of([Token::Ctrl('\n')])
                 .map_with(|token, e| (token, e.span()))
                 .repeated()
                 .collect()
-                .map_with(|args, e| (args, e.span())),
+                .map_with(|args: Vec<_>, e| {
+                    // Fix the span being wrong when there are no arguments (when sub-parser doesn't
+                    // consume input). SEE: <https://github.com/zesterer/chumsky/issues/870>
+                    let mut s: Span = e.span();
+                    if args.is_empty() {
+                        s.start = s.end;
+                    }
+                    (args, s)
+                }),
         )
         .map(|(name, args)| Statement::Instruction(InstructionNode { name, args }))
         .labelled("instruction");
@@ -189,14 +196,13 @@ macro_rules! parse_with {
         let src = $src.with_context(FileID::SRC);
         || -> Result<_, ParseError> {
             let tokens = lexer::lexer($comment_prefix).parse(src).into_result()?;
-            // TODO: replace with `chumsky::input::IterInput` on chumsky 0.10.2 (on 0.10.1 it
-            // doesn't implement the correct traits)
             let tokens = tokens.map(end, |(x, s)| (x, s));
             let res = $parser.parse(tokens).into_result()?;
             Ok(res)
         }()
     }};
 }
+#[allow(unused_imports)] // This is used below, but clippy doesn't seem to detect it
 use parse_with;
 
 /// Parses the input creating an abstract syntax tree
@@ -411,7 +417,17 @@ mod test {
             ("name\n", empty.clone()),
             ("name\r", empty.clone()),
             ("name\r\n", empty.clone()),
+            ("name \n", empty.clone()),
             ("name", empty),
+            (
+                "name a ",
+                vec![instruction(
+                    vec![],
+                    ("name", 0..4),
+                    (vec![(Token::Identifier("a".into()), 5..6)], 5..6),
+                    0..6,
+                )],
+            ),
             (
                 "name a\n",
                 vec![instruction(

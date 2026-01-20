@@ -25,6 +25,7 @@
 use chumsky::{input::MappedInput, prelude::*};
 use regex::Regex;
 
+use std::fmt::Write;
 use std::sync::LazyLock;
 
 use super::{expression, expression::Expr, lexer, ParseError, Span, Spanned, Token};
@@ -46,8 +47,6 @@ pub type ParsedArgs = Vec<ParsedArgument>;
 /// Input type to be used with instruction argument parsers
 // NOTE: we need to name this input type to be able to box the parsers, which is required to store
 // them on a struct
-// TODO: replace with `chumsky::input::IterInput` on chumsky 0.10.2 (on 0.10.1 it doesn't implement
-// the correct traits)
 type TokenInput<'src> =
     MappedInput<Token, Span, &'src [Spanned<Token>], fn(&Spanned<Token>) -> (&Token, &Span)>;
 
@@ -56,7 +55,12 @@ type BoxedParser<'src> = super::Parser!(boxed: 'src, TokenInput<'src>, ParsedArg
 
 /// Instruction parser wrapper
 #[derive(Clone)]
-pub struct Instruction(BoxedParser<'static>);
+pub struct Instruction {
+    /// Parser for the syntax
+    parser: BoxedParser<'static>,
+    /// Human-readable syntax
+    syntax: String,
+}
 
 /// Instruction statement AST node with references to data
 pub type InstructionNodeRef<'src> = (Spanned<&'src str>, Spanned<&'src [Spanned<Token>]>);
@@ -87,9 +91,11 @@ impl Instruction {
     /// # Errors
     ///
     /// Errors if the syntax specification is invalid
+    #[allow(clippy::missing_panics_doc)] // Function should never panic
     pub fn build<T>(fmt: &str, fields: &[InstructionField<T>]) -> Result<Self, &'static str> {
         // Regex for a instruction argument placeholder
         static FIELD: LazyLock<Regex> = crate::regex!(r"^[fF][0-9]+$");
+        static WRITE_EXPECT: &str = "Writing to an in-memory vector can't fail";
 
         // Gets the field number the placeholder points to and validates that it has a correct type
         let field = |ident: String, no_co: bool| -> Result<usize, _> {
@@ -117,6 +123,7 @@ impl Instruction {
 
         // Creates an initial dummy parser that consumes no input
         let parser = any().ignored().or(end()).rewind();
+        let mut syntax = String::with_capacity(fmt.len());
         // Validate the first token is a field placeholder pointing to the opcode/instruction name
         let mut parser = parser
             .to(match tokens.next() {
@@ -125,6 +132,7 @@ impl Instruction {
                     let i = field(ident, false)?;
                     match fields[i].r#type {
                         FieldType::Co => {
+                            write!(syntax, "{} ", fields[i].name).expect(WRITE_EXPECT);
                             // NOTE: This value should never be read, we only need it to point to the
                             // opcode instruction field
                             vec![ParsedArgument {
@@ -144,12 +152,18 @@ impl Instruction {
             .boxed();
 
         // Iterate through the remaining tokens
+        let mut prev_symbol = true;
         for token in tokens {
             // Append the current token parser to the parser being created
             parser = match token {
                 // The current token is an argument placeholder => parse an expression/identifier
                 Token::Identifier(ident) if FIELD.is_match(&ident) => {
                     let field_idx = field(ident, true)?; // Validate the field pointed to
+                    if !prev_symbol {
+                        syntax.push(' ');
+                    }
+                    write!(syntax, "{}", fields[field_idx].name).expect(WRITE_EXPECT);
+                    prev_symbol = false;
                     parser
                         .then(expression::parser())
                         .map(move |(mut args, value)| {
@@ -160,11 +174,36 @@ impl Instruction {
                 }
                 // The current token isn't an argument placeholder => parse it literally, ignoring
                 // its output
-                _ => parser.then_ignore(just(token)).boxed(),
+                _ => {
+                    let symbol = matches!(
+                        token,
+                        Token::Operator(_) | Token::Ctrl(_) | Token::Literal(_)
+                    );
+
+                    if !prev_symbol && !symbol {
+                        syntax.push(' ');
+                    }
+                    match &token {
+                        Token::Integer(n) => write!(syntax, "{n}"),
+                        Token::Float(x) => write!(syntax, "{}", f64::from(*x)),
+                        Token::String(s) => write!(syntax, "\"{s}\""),
+                        Token::Character(c) => write!(syntax, "\'{c}\'"),
+                        Token::Identifier(i) => write!(syntax, "{i}"),
+                        Token::Label(l) => write!(syntax, "{l}:"),
+                        Token::Directive(d) => write!(syntax, "{d}"),
+                        Token::Operator(c) => write!(syntax, "{c}"),
+                        Token::Ctrl(',') => write!(syntax, ", "),
+                        Token::Ctrl(c) | Token::Literal(c) => write!(syntax, "{c}"),
+                    }
+                    .expect(WRITE_EXPECT);
+                    prev_symbol = symbol;
+                    parser.then_ignore(just(token)).boxed()
+                }
             }
         }
+        syntax.truncate(syntax.trim_end().len());
         // Check that there is no remaining input in the syntax and create the final parser
-        Ok(Self(parser))
+        Ok(Self { parser, syntax })
     }
 
     /// Parses the arguments of an instruction according to the syntax
@@ -193,7 +232,7 @@ impl Instruction {
         // SAFETY: This is safe because the stored parser has a lifetime of `'static`, so we will
         // only ever reduce its lifetime. Since lifetimes are removed during monomorphisation, the
         // parser must be valid for arbitrary lifetimes.
-        unsafe { &*(&raw const self.0).cast() }
+        unsafe { &*(&raw const self.parser).cast() }
     }
 
     /// Lexes an instruction represented as a string
@@ -236,12 +275,20 @@ impl Instruction {
         let input = tokens.map(end, |(x, s)| (x, s));
         Ok(parser.parse(input).into_result()?)
     }
+
+    /// Returns a human-readable representation of the syntax
+    #[must_use]
+    pub fn syntax(&self) -> &str {
+        &self.syntax
+    }
 }
 
 // Boxed parsers don't implement `Debug`, so we need to implement it manually as an opaque box
 impl std::fmt::Debug for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("InstructionParser").finish()
+        f.debug_tuple("InstructionParser")
+            .field(&self.syntax)
+            .finish()
     }
 }
 
@@ -254,8 +301,8 @@ mod test {
 
     #[must_use]
     fn fields() -> [InstructionField<'static, ()>; 3] {
-        let field = |co| InstructionField {
-            name: "",
+        let field = |co, name| InstructionField {
+            name,
             r#type: if co {
                 FieldType::Co
             } else {
@@ -263,7 +310,7 @@ mod test {
             },
             range: (),
         };
-        [field(true), field(false), field(false)]
+        [field(true, "name"), field(false, "a"), field(false, "b")]
     }
 
     fn parse(parser: &Instruction, src: &str) -> Result<ParsedArgs, ()> {
@@ -300,6 +347,7 @@ mod test {
     #[test]
     fn no_args() {
         let parser = Instruction::build("F0", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name");
         assert_eq!(parse(&parser, ""), Ok(vec![co_arg()]));
         assert_eq!(parse(&parser, "a"), Err(()));
     }
@@ -307,6 +355,7 @@ mod test {
     #[test]
     fn one_arg() {
         let parser = Instruction::build("F0 F1", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name a");
         assert_eq!(parse(&parser, ""), Err(()));
         assert_eq!(parse(&parser, ","), Err(()));
         assert_eq!(parse(&parser, "$"), Err(()));
@@ -357,6 +406,7 @@ mod test {
     #[test]
     fn multiple_arg() {
         let parser = Instruction::build("F0 F2 F1", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name b a");
         assert_eq!(parse(&parser, ""), Err(()));
         assert_eq!(parse(&parser, ","), Err(()));
         assert_eq!(parse(&parser, "a"), Err(()));
@@ -382,6 +432,7 @@ mod test {
     #[test]
     fn comma_separator() {
         let parser = Instruction::build("F0 F1, F2", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name a, b");
         assert_eq!(parse(&parser, "1 2"), Err(()));
         assert_eq!(
             parse(&parser, "1, 2"),
@@ -396,6 +447,7 @@ mod test {
     #[test]
     fn literals() {
         let parser = Instruction::build("F0 ,1 F1 $(F2)", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name , 1 a$(b)");
         assert_eq!(parse(&parser, "2 5"), Err(()));
         assert_eq!(parse(&parser, ",1 2 5"), Err(()));
         assert_eq!(parse(&parser, ",1 2 (5)"), Err(()));
@@ -410,6 +462,7 @@ mod test {
             ])
         );
         let parser = Instruction::build("F0 1 * -F1", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name 1*-a");
         assert_eq!(parse(&parser, "2"), Err(()));
         assert_eq!(parse(&parser, "-2"), Err(()));
         assert_eq!(parse(&parser, "* -2"), Err(()));
@@ -420,6 +473,7 @@ mod test {
             Ok(vec![co_arg(), arg((number(2), 5..6), 1)])
         );
         let parser = Instruction::build("F0 aF1 F1a F2", &fields()).unwrap();
+        assert_eq!(parser.syntax(), "name aF1 F1a b");
         assert_eq!(parse(&parser, "1 1 2"), Err(()));
         assert_eq!(parse(&parser, "a1 1a 2"), Err(()));
         assert_eq!(parse(&parser, "aF1 f1a 2"), Err(()));

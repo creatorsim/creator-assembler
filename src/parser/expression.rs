@@ -107,16 +107,16 @@ pub enum Expr {
         /// Operation to perform
         op: Spanned<UnaryOp>,
         /// Operand to perform the operation on
-        operand: Box<Spanned<Expr>>,
+        operand: Box<Spanned<Self>>,
     },
     /// Binary operation on other expressions
     BinaryOp {
         /// Operation to perform
         op: Spanned<BinaryOp>,
         /// Left operand of the operation
-        lhs: Box<Spanned<Expr>>,
+        lhs: Box<Spanned<Self>>,
         /// Right operand of the operation
-        rhs: Box<Spanned<Expr>>,
+        rhs: Box<Spanned<Self>>,
     },
 }
 
@@ -217,8 +217,6 @@ pub fn parser<'tokens, I>() -> Parser!('tokens, I, Spanned<Expr>)
 where
     I: ValueInput<'tokens, Token = Token, Span = Span>,
 {
-    // Newline tokens
-    let newline = || just(Token::Ctrl('\n')).repeated();
     // Literal values
     let literal = select! {
         Token::Integer(x) => Expr::Integer(x),
@@ -232,11 +230,9 @@ where
     // Operator parser
     macro_rules! op {
         (:$name:literal: $($i:ident => $o:expr),+ $(,)?) => {
-            newline().ignore_then(
-                select! { $(Token::Operator(Operator::$i) => $o,)+ }
-                    .map_with(|x, e| (x, e.span()))
-                    .labelled(concat!($name, " operator"))
-            )
+            select! { $(Token::Operator(Operator::$i) => $o,)+ }
+                .map_with(|x, e| (x, e.span()))
+                .labelled(concat!($name, " operator"))
         };
         ($($i:ident => $o:expr),+ $(,)?) => { op!(:"binary": $($i => $o,)+) };
     }
@@ -260,15 +256,8 @@ where
     }
 
     recursive(|expr| {
-        // NOTE: newlines before atoms (literal numbers/parenthesized expressions) and operators
-        // are allowed so that expressions may span multiple lines. Newlines aren't allowed after
-        // them to prevent them from consuming new lines required to end statements
-
         // paren_expr: `paren_expr -> ( expression )`
-        let paren_expr = expr.delimited_by(
-            just(Token::Ctrl('(')),
-            newline().ignore_then(just(Token::Ctrl(')'))),
-        );
+        let paren_expr = expr.delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')));
         // modifier: `modifier -> % ident paren_expr`
         let modifier = just(Token::Operator(Operator::Percent))
             .ignore_then(select! {Token::Identifier(name) => name }.labelled("identifier"))
@@ -281,9 +270,8 @@ where
         // Remove span to replace it with one including the parenthesis
         let paren_expr = paren_expr.map(|(x, _)| x);
 
-        // atom: `atom -> \n* (literal | modifier | paren_expr)`
+        // atom: `atom -> literal | modifier | paren_expr`
         let atom = choice((literal, modifier, paren_expr)).map_with(|atom, e| (atom, e.span()));
-        let atom = newline().ignore_then(atom);
         let atom = atom.labelled("expression").as_context();
 
         let high_precedence = op!(
@@ -394,7 +382,7 @@ mod test {
         test([
             ("16", span(Expr::Integer(16u8.into()), 0..2), Ok(16.into())),
             (
-                "\n\n16",
+                "\t 16",
                 span(Expr::Integer(16u8.into()), 2..4),
                 Ok(16.into()),
             ),
@@ -490,12 +478,12 @@ mod test {
                 Ok((2.2, 1..4).into()),
             ),
             (
-                "\n\n+\n2",
+                "\t + 2",
                 un_op((UnaryOp::Plus, 2..3), int(2, 4..5)),
                 Ok(2.into()),
             ),
             (
-                "\n\n+\n2.2",
+                " \t+\t2.2",
                 un_op((UnaryOp::Plus, 2..3), float(2.2, 4..7)),
                 Ok((2.2, 4..7).into()),
             ),
@@ -541,7 +529,7 @@ mod test {
                 Ok(12.into()),
             ),
             (
-                "\n5 \n\n+ \n7",
+                "\t5 \t\t+ \t7",
                 bin_op((BinaryOp::Add, 5..6), int(5, 1..2), int(7, 8..9)),
                 Ok(12.into()),
             ),
@@ -600,7 +588,7 @@ mod test {
                 Ok(35.into()),
             ),
             (
-                "\n5 \n\n* \n7",
+                "\t5 \t\t* \t7",
                 bin_op((BinaryOp::Mul, 5..6), int(5, 1..2), int(7, 8..9)),
                 Ok(35.into()),
             ),
@@ -689,7 +677,7 @@ mod test {
                 Ok(0b0110.into()),
             ),
             (
-                "\n0b0101 \n\n^ \n0b0011",
+                "\t0b0101 \t\t^ \t0b0011",
                 bin_op(
                     (BinaryOp::BitwiseXOR, 10..11),
                     int(0b0101, 1..7),
@@ -698,7 +686,7 @@ mod test {
                 Ok(0b0110.into()),
             ),
             (
-                "\n0b0101 \n\n^ \n1.1",
+                "\t0b0101 \t\t^ \t1.1",
                 bin_op(
                     (BinaryOp::BitwiseXOR, 10..11),
                     int(0b0101, 1..7),
@@ -878,7 +866,7 @@ mod test {
                 Ok(0.into()),
             ),
             (
-                "1 + \n(\n2 - 3\n)",
+                "1 + \t(\t2 - 3\t)",
                 bin_op(
                     (BinaryOp::Add, 2..3),
                     int(1, 0..1),
@@ -916,7 +904,7 @@ mod test {
                 Ok(0.into()),
             ),
             (
-                "\n- \n\n+ \n1",
+                "\t- \t\t+ \t1",
                 un_op(
                     (UnaryOp::Minus, 1..2),
                     un_op((UnaryOp::Plus, 5..6), int(1, 8..9)),

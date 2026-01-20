@@ -46,8 +46,8 @@ impl Section {
     /// * `bounds`: start/end addresses of the section
     #[must_use]
     pub fn new(name: &'static str, bounds: Option<&NonEmptyRangeInclusive<BigUint>>) -> Self {
-        bounds.map_or(
-            Self {
+        bounds.map_or_else(
+            || Self {
                 name,
                 address: 1u8.into(),
                 end: BigUint::ZERO,

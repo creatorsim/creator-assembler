@@ -1,42 +1,15 @@
 {
-  "arch_conf": [
-    {
-      "name": "Name",
-      "value": "Test"
-    },
-    {
-      "name": "Bits",
-      "value": "32"
-    },
-    {
-      "name": "Description",
-      "value": "Test architecture"
-    },
-    {
-      "name": "Data Format",
-      "value": "big_endian"
-    },
-    {
-      "name": "Memory Alignment",
-      "value": "1"
-    },
-    {
-      "name": "Main Function",
-      "value": "main"
-    },
-    {
-      "name": "Passing Convention",
-      "value": "1"
-    },
-    {
-      "name": "Sensitive Register Name",
-      "value": "1"
-    },
-    {
-      "name": "CommentPrefix",
-      "value": "#"
-    }
-  ],
+  "config": {
+    "name": "Test",
+    "word_size": 32,
+    "description": "Test architecture",
+    "endianness": "big_endian",
+    "memory_alignment": true,
+    "main_function": "main",
+    "passing_convention": true,
+    "sensitive_register_name": true,
+    "comment_prefix": "#"
+  },
   "components": [
     {
       "name": "Control registers",
@@ -44,28 +17,25 @@
       "double_precision": false,
       "elements": [
         {
-          "name": [
-            "PC"
-          ],
-          "nbits": "32",
+          "name": ["PC"],
+          "nbits": 32,
+          "encoding": 0,
           "value": 0,
           "default_value": 0,
           "properties": []
         },
         {
-          "name": [
-            "ctrl1"
-          ],
-          "nbits": "32",
+          "name": ["ctrl1"],
+          "nbits": 32,
+          "encoding": 1,
           "value": 0,
           "default_value": 0,
           "properties": []
         },
         {
-          "name": [
-            "ctrl2"
-          ],
-          "nbits": "32",
+          "name": ["ctrl2"],
+          "nbits": 32,
+          "encoding": 2,
           "value": 0,
           "default_value": 0,
           "properties": []
@@ -78,31 +48,25 @@
       "double_precision": false,
       "elements": [
         {
-          "name": [
-            "x0"
-          ],
-          "nbits": "32",
+          "name": ["x0"],
+          "nbits": 32,
+          "encoding": 0,
           "value": 0,
           "default_value": 0,
           "properties": []
         },
         {
-          "name": [
-            "x1",
-            "one"
-          ],
-          "nbits": "32",
+          "name": ["x1", "one"],
+          "nbits": 32,
+          "encoding": 1,
           "value": 0,
           "default_value": 0,
           "properties": []
         },
         {
-          "name": [
-            "x2",
-            "two",
-            "2"
-          ],
-          "nbits": "32",
+          "name": ["x2", "two", "2"],
+          "nbits": 32,
+          "encoding": 2,
           "value": 0,
           "default_value": 0,
           "properties": []
@@ -113,33 +77,27 @@
       "name": "Floating point registers",
       "type": "fp_registers",
       "double_precision": true,
-      "double_precision_type": "extended",
       "elements": [
         {
-          "name": [
-            "ft0"
-          ],
-          "nbits": "64",
+          "name": ["ft0"],
+          "nbits": 64,
+          "encoding": 0,
           "value": 0.0,
           "default_value": 0.0,
           "properties": []
         },
         {
-          "name": [
-            "F1",
-            "ft1"
-          ],
-          "nbits": "64",
+          "name": ["F1", "ft1"],
+          "nbits": 64,
+          "encoding": 1,
           "value": 0.0,
           "default_value": 0.0,
           "properties": []
         },
         {
-          "name": [
-            "Field2",
-            "ft2"
-          ],
-          "nbits": "64",
+          "name": ["Field2", "ft2"],
+          "nbits": 64,
+          "encoding": 2,
           "value": 0.0,
           "default_value": 0.0,
           "properties": []
@@ -152,77 +110,27 @@
       "double_precision": false,
       "elements": [
         {
-          "name": [
-            "fs0"
-          ],
-          "nbits": "32",
+          "name": ["fs0"],
+          "nbits": 32,
+          "encoding": 0,
           "value": 0.0,
           "default_value": 0.0,
           "properties": []
         },
         {
-          "name": [
-            "fs1"
-          ],
-          "nbits": "32",
+          "name": ["fs1"],
+          "nbits": 32,
+          "encoding": 1,
           "value": 0.0,
           "default_value": 0.0,
           "properties": []
         },
         {
-          "name": [
-            "fs2"
-          ],
-          "nbits": "32",
+          "name": ["fs2"],
+          "nbits": 32,
+          "encoding": 2,
           "value": 0.0,
           "default_value": 0.0,
-          "properties": []
-        }
-      ]
-    },
-    {
-      "name": "Double floating point registers",
-      "type": "fp_registers",
-      "double_precision": true,
-      "double_precision_type": "linked",
-      "elements": [
-        {
-          "name": [
-            "FD0"
-          ],
-          "nbits": "64",
-          "value": 0.0,
-          "default_value": 0.0,
-          "simple_reg": [
-            "fs0",
-            "fs1"
-          ],
-          "properties": []
-        },
-        {
-          "name": [
-            "FD1"
-          ],
-          "nbits": "64",
-          "value": 0.0,
-          "default_value": 0.0,
-          "simple_reg": [
-            "fs1",
-            "fs2"
-          ],
-          "properties": []
-        },
-        {
-          "name": [
-            "FD2"
-          ],
-          "nbits": "64",
-          "value": 0.0,
-          "default_value": 0.0,
-          "simple_reg": [
-            "fs2",
-            "fs3"
-          ],
           "properties": []
         }
       ]
@@ -233,8 +141,6 @@
       "name": "nop",
       "type": "Arithmetic integer",
       "signature_definition": "F0",
-      "signature": "nop",
-      "signatureRaw": "nop",
       "co": "1111111",
       "cop": "0000000000",
       "nwords": 1,
@@ -251,19 +157,15 @@
           "type": "cop",
           "startbit": 31,
           "stopbit": 28,
-          "valueField": "1111"
+          "value": "1111"
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "nop2",
       "type": "Arithmetic integer",
       "signature_definition": "F0",
-      "signature": "nop2",
-      "signatureRaw": "nop2",
       "co": "1000001",
       "cop": "0000000000",
       "nwords": 2,
@@ -280,19 +182,15 @@
           "type": "cop",
           "startbit": 63,
           "stopbit": 60,
-          "valueField": "1001"
+          "value": "1001"
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "imm",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F1 F2 F3",
-      "signature": "inm,inm-signed,inm-unsigned,address",
-      "signatureRaw": "inm inms inmu addr",
+      "signature_definition": "F0 F1, F2, F3",
       "co": "0000000",
       "cop": "0000000000",
       "nwords": 1,
@@ -305,14 +203,14 @@
           "stopbit": 0
         },
         {
-          "name": "inms",
-          "type": "inm-signed",
+          "name": "imms",
+          "type": "imm-signed",
           "startbit": 29,
           "stopbit": 26
         },
         {
-          "name": "inmu",
-          "type": "inm-unsigned",
+          "name": "immu",
+          "type": "imm-unsigned",
           "startbit": 8,
           "stopbit": 1
         },
@@ -323,16 +221,12 @@
           "stopbit": 10
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "reg",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F1 F2 F3 F4",
-      "signature": "reg,Ctrl-Reg,INT-Reg,SFP-Reg,DFP-Reg",
-      "signatureRaw": "reg ctrl int sfp dfp",
+      "signature_definition": "F0 F1, F2, F3, F4",
       "co": "0000000",
       "cop": "0000000000",
       "nwords": 1,
@@ -369,16 +263,12 @@
           "stopbit": 0
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "off",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F1 F2",
-      "signature": "off,offset_bytes,offset_words",
-      "signatureRaw": "off bytes words",
+      "signature_definition": "F0 F1, F2",
       "co": "0000000",
       "cop": "0000000000",
       "nwords": 1,
@@ -403,16 +293,12 @@
           "stopbit": 0
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "multi",
       "type": "Arithmetic integer",
       "signature_definition": "F0 F1",
-      "signature": "multi,inm-unsigned",
-      "signatureRaw": "multi imm4",
       "co": "1110011",
       "cop": "0000000000",
       "nwords": 1,
@@ -426,21 +312,17 @@
         },
         {
           "name": "imm4",
-          "type": "inm-unsigned",
+          "type": "imm-unsigned",
           "startbit": 31,
           "stopbit": 28
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "multi",
       "type": "Arithmetic integer",
       "signature_definition": "F0 $",
-      "signature": "multi,$",
-      "signatureRaw": "multi $",
       "co": "1011101",
       "cop": "0000000000",
       "nwords": 1,
@@ -453,16 +335,12 @@
           "stopbit": 0
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "multi",
       "type": "Arithmetic integer",
       "signature_definition": "F0 F1",
-      "signature": "multi,inm-unsigned",
-      "signatureRaw": "multi imm5",
       "co": "1000001",
       "cop": "0000000000",
       "nwords": 1,
@@ -476,21 +354,17 @@
         },
         {
           "name": "imm5",
-          "type": "inm-unsigned",
+          "type": "imm-unsigned",
           "startbit": 31,
           "stopbit": 27
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "pad",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F1 F2",
-      "signature": "multi,inm-signed,inm-signed",
-      "signatureRaw": "multi imm5 imm6",
+      "signature_definition": "F0 F1, F2",
       "co": "1111101",
       "cop": "0000000000",
       "nwords": 1,
@@ -504,29 +378,25 @@
         },
         {
           "name": "imm5",
-          "type": "inm-signed",
+          "type": "imm-signed",
           "startbit": 31,
           "stopbit": 29,
           "padding": 2
         },
         {
           "name": "imm6",
-          "type": "inm-signed",
+          "type": "imm-signed",
           "startbit": 5,
           "stopbit": 2,
           "padding": 2
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "enum",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F1 F2 F3 F4",
-      "signature": "enum,enum,enum,enum,enum",
-      "signatureRaw": "enum enum1 enum2 enum3 enum4",
+      "signature_definition": "F0 F1, F2, F3, F4",
       "co": "1111111",
       "cop": "0000000000",
       "nwords": 1,
@@ -567,16 +437,12 @@
           "enum_name": "test"
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "lit",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F1a aF1 F1",
-      "signature": "lit,F1a,aF1,inm-signed",
-      "signatureRaw": "lit F1a aF1 imm",
+      "signature_definition": "F0 F1a, aF1, F1",
       "co": "1111000",
       "cop": "0000000000",
       "nwords": 1,
@@ -590,21 +456,17 @@
         },
         {
           "name": "imm",
-          "type": "inm-signed",
+          "type": "imm-signed",
           "startbit": 3,
           "stopbit": 0
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     },
     {
       "name": "addi",
       "type": "Arithmetic integer",
-      "signature_definition": "F0 F3 F2 F1",
-      "signature": "addi,INT-Reg,INT-Reg,inm-signed",
-      "signatureRaw": "addi rd rs1 imm",
+      "signature_definition": "F0 F3, F2, F1",
       "co": "0010011",
       "cop": "000",
       "nwords": 1,
@@ -618,7 +480,7 @@
         },
         {
           "name": "imm",
-          "type": "inm-signed",
+          "type": "imm-signed",
           "startbit": 31,
           "stopbit": 20
         },
@@ -639,27 +501,22 @@
           "type": "cop",
           "startbit": 14,
           "stopbit": 12,
-          "valueField": "000"
+          "value": "000"
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     }
   ],
   "pseudoinstructions": [
     {
       "name": "pseudo",
-      "signature_definition": "pseudo F0 F1",
-      "signature": "pseudo,inm-unsigned,INT-Reg",
-      "signatureRaw": "pseudo imm reg",
-      "help": "",
+      "signature_definition": "pseudo F0, F1",
       "properties": [],
       "nwords": 1,
       "fields": [
         {
           "name": "imm",
-          "type": "inm-unsigned"
+          "type": "imm-unsigned"
         },
         {
           "name": "reg",
@@ -693,7 +550,7 @@
     {
       "name": ".zero",
       "action": "space",
-      "size": "1"
+      "size": 1
     },
     {
       "name": ".align",
@@ -718,22 +575,22 @@
     {
       "name": ".byte",
       "action": "byte",
-      "size": "1"
+      "size": 1
     },
     {
       "name": ".half",
       "action": "half_word",
-      "size": "2"
+      "size": 2
     },
     {
       "name": ".word",
       "action": "word",
-      "size": "4"
+      "size": 4
     },
     {
       "name": ".dword",
       "action": "double_word",
-      "size": "8"
+      "size": 8
     },
     {
       "name": ".float",
@@ -751,32 +608,20 @@
       "size": null
     }
   ],
-  "memory_layout": [
-    {
-      "name": "text start",
-      "value": "0x00000000"
+  "memory_layout": {
+    "text": {
+      "start": 0,
+      "end": 65535
     },
-    {
-      "name": "text end",
-      "value": "0x0000FFFF"
+    "data": {
+      "start": 16777216,
+      "end": 134217727
     },
-    {
-      "name": "data start",
-      "value": "0x01000000"
-    },
-    {
-      "name": "data end",
-      "value": "0x07FFFFFF"
-    },
-    {
-      "name": "stack start",
-      "value": "0x0FFFFFFC"
-    },
-    {
-      "name": "stack end",
-      "value": "0x0FFFFFFF"
+    "stack": {
+      "start": 268435452,
+      "end": 268435455
     }
-  ],
+  },
   "enums": {
     "enum1": {
       "a": 1,

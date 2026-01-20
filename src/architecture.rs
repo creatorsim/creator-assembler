@@ -31,7 +31,7 @@ use std::collections::HashMap;
 
 mod utils;
 pub use utils::NonEmptyRangeInclusive;
-pub use utils::{BaseN, Integer, Pair, RangeFrom};
+pub use utils::{BaseN, Integer, RangeFrom};
 
 mod json;
 
@@ -43,7 +43,7 @@ pub struct Architecture<'a> {
     /// memory alignment, main function, passing convention, and sensitive register
     /// name
     #[serde(borrow)]
-    pub arch_conf: Config<'a>,
+    pub config: Config<'a>,
     /// Components (register files) of the architecture. It's assumed that the first register of
     /// the first file will contain the program counter
     pub components: Vec<Component<'a>>,
@@ -60,6 +60,9 @@ pub struct Architecture<'a> {
     /// Interrupt configuration
     #[serde(default)]
     pub interrupts: Option<Interrupts>,
+    /// Timer configuration
+    #[serde(default)]
+    pub timer: Option<Timer>,
     /// Definitions of possible enumerated instruction fields
     #[serde(default)]
     pub enums: HashMap<&'a str, EnumDefinition<'a>>,
@@ -88,8 +91,7 @@ pub struct Modifier {
 pub type EnumDefinition<'a> = HashMap<&'a str, Integer>;
 
 /// Architecture metadata attributes
-#[derive(Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
-#[serde(try_from = "[json::Config<'a>; 9]")]
+#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Config<'a> {
     /// Name of the architecture
     pub name: &'a str,
@@ -98,7 +100,7 @@ pub struct Config<'a> {
     /// Description of the architecture
     pub description: &'a str,
     /// Storage format of the architecture (big/little endian)
-    pub data_format: DataFormat,
+    pub endianness: Endianness,
     /// Whether to enable memory alignment
     pub memory_alignment: bool,
     /// Name of the `main` function of the program
@@ -110,12 +112,11 @@ pub struct Config<'a> {
     /// String to use as line comment prefix
     pub comment_prefix: &'a str,
 }
-utils::schema_from!(Config<'a>, [json::Config<'a>; 9]);
 
 /// Endianness of data in the architecture
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
-pub enum DataFormat {
+pub enum Endianness {
     BigEndian,
     LittleEndian,
 }
@@ -129,8 +130,6 @@ pub struct Component<'a> {
     r#type: ComponentType,
     /// Whether the registers have double the word size
     double_precision: bool,
-    /// If the registers have double the word size, how this size is achieved
-    double_precision_type: Option<PrecisionType>,
     /// Registers in this file
     pub elements: Vec<Register<'a>>,
 }
@@ -160,39 +159,23 @@ pub enum RegisterType {
     Float(FloatType),
 }
 
-/// Type of registers bigger than a single word
-#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
-pub enum PrecisionType {
-    /// Register has a bigger size
-    Extended,
-    /// Register is made up of 2 word size registers
-    Linked,
-}
-
 /// Register specification
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
 pub struct Register<'a> {
     /// List of aliases
     #[serde(borrow)]
     pub name: Vec<&'a str>,
+    /// Encoding of the register in an instruction
+    pub encoding: Integer,
     /// Size
-    #[serde(deserialize_with = "utils::from_str")]
-    #[schemars(with = "utils::StringOrT<Integer>")]
     pub nbits: Integer,
     /// Current value of the register
-    #[serde(deserialize_with = "utils::from_str")]
-    #[schemars(with = "utils::StringOrT<Number>")]
     pub value: Number,
     /// Default value of the register
-    #[serde(deserialize_with = "utils::optional_from_str")]
     #[serde(default)]
-    #[schemars(with = "Option<utils::StringOrT<Number>>")]
     pub default_value: Option<Number>,
     /// Properties of this register
     pub properties: Vec<RegisterProperty>,
-    /// Smaller registers that make up this register when the double precision mode is `Linked`
-    pub simple_reg: Option<[&'a str; 2]>,
 }
 
 /// Properties of a register
@@ -243,10 +226,6 @@ pub struct Instruction<'a> {
     // Can't be a reference because there might be escape sequences, which require
     // modifying the data on deserialization
     pub definition: String,
-    /// Determines whether the field `i` is separated in the resulting binary instruction
-    pub separated: Option<Vec<bool>>,
-    /// Help information of the instruction
-    pub help: &'a str,
     /// Properties of the instruction
     pub properties: Option<Vec<InstructionProperties>>,
 }
@@ -285,8 +264,6 @@ pub struct InstructionSyntax<'a, BitRange> {
     pub parser: crate::parser::Instruction,
     /// Translated instruction's syntax
     pub output_syntax: &'a str,
-    /// User representation of the instruction's syntax
-    pub user_syntax: String,
     /// Parameters of the instruction
     pub fields: Vec<InstructionField<'a, BitRange>>,
 }
@@ -296,8 +273,8 @@ utils::schema_from!(InstructionSyntax<'a, T>, json::InstructionSyntax<T>);
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum InstructionProperties {
-    ExitSubrutine,
-    EnterSubrutine,
+    ExitSubroutine,
+    EnterSubroutine,
     Privileged,
 }
 
@@ -335,14 +312,13 @@ pub enum FieldType<'a> {
     /// Extended operation code
     Cop {
         /// Fixed value of this field in the binary instruction (specified as a binary string)
-        #[serde(rename = "valueField")]
         value: BaseN<2>,
     },
     /// Immediate signed integer
-    #[serde(rename = "inm-signed")]
+    #[serde(rename = "imm-signed")]
     ImmSigned,
     /// Immediate unsigned integer
-    #[serde(rename = "inm-unsigned")]
+    #[serde(rename = "imm-unsigned")]
     ImmUnsigned,
     /// Offset from the next instruction's address in bytes
     #[serde(rename = "offset_bytes")]
@@ -383,8 +359,6 @@ pub struct Pseudoinstruction<'a> {
     // Can't be a reference because there might be escape sequences, which require
     // modifying the data on deserialization
     pub definition: String,
-    /// Help information of the instruction
-    pub help: &'a str,
     /// Properties of the instruction
     pub properties: Option<Vec<InstructionProperties>>,
 }
@@ -499,13 +473,12 @@ pub enum AlignmentType {
 }
 
 /// Memory layout of the architecture
-#[derive(Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(try_from = "Vec<Pair<json::MemoryLayoutKeys, BaseN<16>>>")]
+#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
 pub struct MemoryLayout {
     /// Addresses reserved for the kernel text segment
-    kernel_text: Option<NonEmptyRangeInclusive<BigUint>>,
+    ktext: Option<NonEmptyRangeInclusive<BigUint>>,
     /// Addresses reserved for the kernel data segment
-    kernel_data: Option<NonEmptyRangeInclusive<BigUint>>,
+    kdata: Option<NonEmptyRangeInclusive<BigUint>>,
     /// Addresses reserved for the text segment
     text: NonEmptyRangeInclusive<BigUint>,
     /// Addresses reserved for the data segment
@@ -513,28 +486,64 @@ pub struct MemoryLayout {
     /// Addresses reserved for the stack segment
     stack: NonEmptyRangeInclusive<BigUint>,
 }
-utils::schema_from!(MemoryLayout, Vec<Pair<json::MemoryLayoutKeys, BaseN<16>>>);
+
+#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
+pub struct InterruptHandlers {
+    /// JS Handler for CREATOR interrupt handler's syscall interrupt
+    pub creator_syscall: Option<String>,
+    /// JS Handler for the custom interrupt handler
+    pub custom: Option<String>,
+}
 
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
 pub struct Interrupts {
-    /// Controls whether interrupts are enabled by default (`true`) or not (`false`)
-    pub enabled: bool,
-    /// JS code to be executed in order to check whether an interrupt happened.
-    /// It must return an `InterruptType` (if an interrupt happened) or `null` (if it didn't)
-    pub interrupt_check: String,
-    /// JS code to be executed in order to check whether interrupts are enabled
-    pub enable_check: String,
-    /// JS code to be executed in order to enable interrupts
-    pub interrupt_enable: String,
-    /// JS code to be executed in order to disable interrupts
-    pub interrupt_disable: String,
-    /// JS code to be executed in order to obtain the interrupt handler address
-    pub get_handler_addr: String,
-    /// JS code to be executed in order to clear an interrupt
-    pub clear_interrupt: String,
-    /// JS arrow (lambda) function to be executed in order to set an interrupt given an interrupt
-    /// type
-    pub set_interrupt_cause: String,
+    /// Interrupt handler configuration
+    pub handlers: InterruptHandlers,
+    /// JS code to be executed in order to check what type of interrupt occurred.
+    /// It must return an `InterruptType` (if an interrupt happened) or `null`
+    /// (if it didn't)
+    pub check: String,
+    /// JS code to be executed in order to enable the specified interrupt
+    /// `type`. Defaults to `global_enable`
+    pub enable: Option<String>,
+    /// JS code to be executed in order to disable the specified interrupt
+    /// `type`. Defaults to `global_disable`
+    pub disable: Option<String>,
+    /// JS code to be executed in order to globally enable interrupts
+    pub global_enable: String,
+    /// JS code to be executed in order to globally disable interrupts
+    pub global_disable: String,
+    /// JS code to be executed in order to clear an interrupt of the specified
+    /// `type`. Defaults to `global_clear`
+    pub clear: Option<String>,
+    /// JS code to be executed in order to clear all interrupts
+    pub global_clear: String,
+    /// JS code to be executed in order to set an interrupt given an interrupt
+    /// `type`
+    pub create: String,
+    /// JS code to check whether the specified interrupt `type` is enabled. Must
+    /// return a boolean. Defaults to `is_global_enabled`
+    pub is_enabled: Option<String>,
+    /// JS code to check whether interrupts are globally is enabled. Must return
+    /// a boolean
+    pub is_global_enabled: String,
+}
+
+#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
+pub struct Timer {
+    /// Number of clock cycles that correspond to one timer tick
+    pub tick_cycles: usize,
+    /// JS code to be executed each tick in order to advance the tick
+    pub advance: String,
+    /// JS code to be executed each tick in order to check the timer and act (e.g. launch an
+    /// interrupt)
+    pub handler: String,
+    /// JS code to be executed in order to check whether the timer is enabled
+    pub is_enabled: String,
+    /// JS code to be executed in order to enable timer
+    pub enable: String,
+    /// JS code to be executed in order to disable timer
+    pub disable: String,
 }
 
 impl Architecture<'_> {
@@ -559,7 +568,7 @@ impl Architecture<'_> {
     /// doesn't conform to the specification
     pub fn from_json(src: &str) -> serde_json::Result<Architecture<'_>> {
         let arch = serde_json::from_str::<Architecture>(src)?;
-        let word_size = arch.arch_conf.word_size;
+        let word_size = arch.config.word_size;
         for instruction in &arch.instructions {
             let size = instruction.nwords.saturating_mul(word_size);
             for field in &instruction.syntax.fields {
@@ -591,19 +600,19 @@ impl Architecture<'_> {
     /// Gets the word size of the architecture
     #[must_use]
     pub const fn word_size(&self) -> usize {
-        self.arch_conf.word_size
+        self.config.word_size
     }
 
     /// Gets the name of the label used as the entry point of the code
     #[must_use]
     pub const fn main_label(&self) -> &str {
-        self.arch_conf.main_function
+        self.config.main_function
     }
 
     /// Gets the string to use as the line comment prefix
     #[must_use]
     pub const fn comment_prefix(&self) -> &str {
-        self.arch_conf.comment_prefix
+        self.config.comment_prefix
     }
 
     /// Gets the code section's start/end addresses
@@ -615,7 +624,7 @@ impl Architecture<'_> {
     /// Gets the kernel's code section's start/end addresses
     #[must_use]
     pub const fn kernel_code_section(&self) -> Option<&NonEmptyRangeInclusive<BigUint>> {
-        self.memory_layout.kernel_text.as_ref()
+        self.memory_layout.ktext.as_ref()
     }
 
     /// Gets the data section's start/end addresses
@@ -627,7 +636,7 @@ impl Architecture<'_> {
     /// Gets the kernel's data section's start/end addresses
     #[must_use]
     pub const fn kernel_data_section(&self) -> Option<&NonEmptyRangeInclusive<BigUint>> {
-        self.memory_layout.kernel_data.as_ref()
+        self.memory_layout.kdata.as_ref()
     }
 
     /// Gets the instructions with the given name
@@ -665,14 +674,11 @@ impl Architecture<'_> {
     /// * `type`: type of the file wanted
     pub fn find_reg_files(&self, r#type: RegisterType) -> impl Iterator<Item = &Component<'_>> {
         let eq = move |file: &&Component| match r#type {
-            RegisterType::Int => matches!(file.r#type, ComponentType::Int),
-            RegisterType::Ctrl => matches!(file.r#type, ComponentType::Ctrl),
-            RegisterType::Float(FloatType::Float) => matches!(
-                (file.r#type, file.double_precision_type),
-                (ComponentType::Float, None | Some(PrecisionType::Extended))
-            ),
-            RegisterType::Float(FloatType::Double) => {
-                matches!(file.r#type, ComponentType::Float) && file.double_precision_type.is_some()
+            RegisterType::Int => file.r#type == ComponentType::Int,
+            RegisterType::Ctrl => file.r#type == ComponentType::Ctrl,
+            RegisterType::Float(x) => {
+                file.r#type == ComponentType::Float
+                    && (x == FloatType::Double) == file.double_precision
             }
         };
         self.components.iter().filter(eq)
@@ -688,8 +694,8 @@ impl Component<'_> {
     /// * `name`: name of the register to search for
     /// * `case`: whether the find should be case sensitive (`true`) or not (`false`)
     #[must_use]
-    pub fn find_register(&self, name: &str, case: bool) -> Option<(usize, &Register<'_>, &str)> {
-        self.elements.iter().enumerate().find_map(|(i, reg)| {
+    pub fn find_register(&self, name: &str, case: bool) -> Option<(&Register<'_>, &str)> {
+        self.elements.iter().find_map(|reg| {
             let name = reg.name.iter().find(|&&n| {
                 if case {
                     n == name
@@ -697,7 +703,7 @@ impl Component<'_> {
                     n.eq_ignore_ascii_case(name)
                 }
             });
-            name.map(|&n| (i, reg, n))
+            name.map(|&n| (reg, n))
         })
     }
 }

@@ -272,14 +272,14 @@ fn parse_instruction<'a>(
                 // Otherwise, store it in case this is the only matching definition
                 possible_def = Some((inst, parsed_args));
             }
-            Err(e) => errs.push((inst.syntax.user_syntax.to_string(), e)),
+            Err(e) => errs.push((inst.syntax.parser.syntax().to_string(), e)),
         }
     }
     for inst in arch.find_pseudoinstructions(name.0) {
         match inst.syntax.parser.parse(args) {
             // If parsing is successful, assume this definition is the correct one and return it
             Ok(parsed_args) => return Ok((InstructionDefinition::Pseudo(inst), parsed_args)),
-            Err(e) => errs.push((inst.syntax.user_syntax.to_string(), e)),
+            Err(e) => errs.push((inst.syntax.parser.syntax().to_string(), e)),
         }
     }
     // None of the definitions matched perfectly. If there is a matching definition that failed due
@@ -1089,9 +1089,9 @@ fn evaluate_instruction_field(
             files
                 .peek()
                 .ok_or_else(|| ErrorKind::UnknownRegisterFile(file_type).add_span(arg.value.1))?;
-            let case = ctx.arch.arch_conf.sensitive_register_name;
+            let case = ctx.arch.config.sensitive_register_name;
             // Find the register with the given name
-            let (i, _, name) = files
+            let (reg, name) = files
                 .find_map(|file| file.find_register(&name, case))
                 .ok_or_else(|| {
                     ErrorKind::UnknownRegister {
@@ -1100,7 +1100,7 @@ fn evaluate_instruction_field(
                     }
                     .add_span(arg.value.1)
                 })?;
-            (i.into(), name.to_string())
+            (reg.encoding.0.clone().into(), name.to_string())
         }
         // Enumerated fields
         FieldType::Enum { enum_name } => {
@@ -1470,20 +1470,21 @@ mod test {
     #[test]
     fn instruction_fields_regs() {
         // Simple
-        let x = compile(".text\nmain: reg ctrl1, x2, ft1, ft2").unwrap();
+        let x = compile(".text\nmain: reg ctrl1, x2, fs1, ft2").unwrap();
         let binary = "01001000000000000000000000010010";
+        let result = "reg ctrl1, x2, fs1, ft2";
         let tbl = label_table([("main", 0, 6..11)]);
         assert_eq!(x.label_table, tbl);
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "reg ctrl1 x2 ft1 ft2", binary, 12..35)]
+            vec![inst(0, &["main"], result, binary, 12..35)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
         // Aliases
-        let x = compile(".text\nmain: reg ctrl1, two, F1, Field2").unwrap();
+        let x = compile(".text\nmain: reg ctrl1, two, f1, Field2").unwrap();
         assert_eq!(x.label_table, tbl);
-        let instruction = "reg ctrl1 two F1 Field2";
+        let instruction = "reg ctrl1, two, f1, Field2";
         assert_eq!(
             x.instructions,
             vec![inst(0, &["main"], instruction, binary, 12..38)]
@@ -1491,20 +1492,11 @@ mod test {
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
         // Number aliases
-        let x = compile(".text\nmain: reg ctrl1, 2, ft1, ft2").unwrap();
+        let x = compile(".text\nmain: reg ctrl1, 2, fs1, ft2").unwrap();
         assert_eq!(x.label_table, tbl);
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "reg ctrl1 2 ft1 ft2", binary, 12..34)]
-        );
-        assert_eq!(x.data_memory, vec![]);
-        assert_eq!(x.global_symbols, HashSet::new());
-        // Linked floating point registers
-        let x = compile(".text\nmain: reg ctrl1, x2, fs1, FD2").unwrap();
-        assert_eq!(x.label_table, tbl);
-        assert_eq!(
-            x.instructions,
-            vec![inst(0, &["main"], "reg ctrl1 x2 fs1 FD2", binary, 12..35)]
+            vec![inst(0, &["main"], "reg ctrl1, 2, fs1, ft2", binary, 12..34)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1531,7 +1523,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "imm -7 255 11", binary, 12..27)]
+            vec![inst(0, &["main"], "imm -7, 255, 11", binary, 12..27)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1554,7 +1546,7 @@ mod test {
             x.instructions,
             vec![
                 main_nop(12..15),
-                inst(4, &["a"], "imm 4 16 8", binary, 19..30),
+                inst(4, &["a"], "imm 4, 16, 8", binary, 19..30),
                 inst(8, &["b"], "nop", NOP_BINARY, 34..37),
             ]
         );
@@ -1572,7 +1564,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "off 7 -8", binary, 12..21)]
+            vec![inst(0, &["main"], "off 7, -8", binary, 12..21)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1585,7 +1577,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![main_nop(12..15), inst(4, &[], "off -4 -1", binary, 16..30),]
+            vec![main_nop(12..15), inst(4, &[], "off -4, -1", binary, 16..30),]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1600,7 +1592,7 @@ mod test {
             x.instructions,
             vec![
                 inst(0, &["a"], "nop", NOP_BINARY, 9..12),
-                inst(4, &[], "off 4 1", binary, 13..27),
+                inst(4, &[], "off 4, 1", binary, 13..27),
                 inst(8, &["main"], "nop", NOP_BINARY, 34..37),
             ]
         );
@@ -1615,7 +1607,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "off 6 7", binary, 12..20)]
+            vec![inst(0, &["main"], "off 6, 7", binary, 12..20)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1631,7 +1623,7 @@ mod test {
         );
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "off 1 4", binary, 12..20)]
+            vec![inst(0, &["main"], "off 1, 4", binary, 12..20)]
         );
         assert_eq!(
             x.data_memory,
@@ -1650,7 +1642,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "enum a b value last", binary, 12..34)]
+            vec![inst(0, &["main"], "enum a, b, value, last", binary, 12..34)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1663,7 +1655,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "pad 12 4", binary, 12..21)]
+            vec![inst(0, &["main"], "pad 12, 4", binary, 12..21)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1673,7 +1665,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "pad -16 -4", binary, 12..23)]
+            vec![inst(0, &["main"], "pad -16, -4", binary, 12..23)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -1686,7 +1678,7 @@ mod test {
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         assert_eq!(
             x.instructions,
-            vec![inst(0, &["main"], "lit F1a aF1 3", binary, 12..27)]
+            vec![inst(0, &["main"], "lit F1a, aF1, 3", binary, 12..27)]
         );
         assert_eq!(x.data_memory, vec![]);
         assert_eq!(x.global_symbols, HashSet::new());
@@ -2100,9 +2092,10 @@ mod test {
         let x = compile(".text\nmain: nop\nimm ., 0, 0\n.data\n.word .").unwrap();
         assert_eq!(x.label_table, label_table([("main", 0, 6..11)]));
         let binary = "00010000000000000000000000000000";
+        let result = "imm 4, 0, 0";
         assert_eq!(
             x.instructions,
-            vec![main_nop(12..15), inst(4, &[], "imm 4 0 0", binary, 16..27)]
+            vec![main_nop(12..15), inst(4, &[], result, binary, 16..27)]
         );
         assert_eq!(
             x.data_memory,
@@ -2254,15 +2247,15 @@ mod test {
             .add_span((24..26).span())),
         );
         assert_eq!(
-            compile(".text\nmain: reg PC, x0, FD1, ft2"),
+            compile(".text\nmain: reg PC, x0, F1, ft2"),
             Err(ErrorKind::UnknownRegister {
-                name: "FD1".into(),
+                name: "F1".into(),
                 file: RegisterType::Float(FloatType::Float),
             }
-            .add_span((24..27).span())),
+            .add_span((24..26).span())),
         );
         assert_eq!(
-            compile(".text\nmain: reg PC, x0, ft1, fs2"),
+            compile(".text\nmain: reg PC, x0, fs1, fs2"),
             Err(ErrorKind::UnknownRegister {
                 name: "fs2".into(),
                 file: RegisterType::Float(FloatType::Double),

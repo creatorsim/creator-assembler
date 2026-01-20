@@ -21,13 +21,12 @@
 //! Module containing conversion methods between the format used by the architecture JSON
 //! specification and our internal representation
 
-use num_bigint::BigUint;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
-use super::{utils, DataFormat, DirectiveAction};
+use super::{utils, DirectiveAction};
 use super::{AlignmentType, FloatType, IntegerType, StringType};
-use utils::{BaseN, Bool, NonEmptyRangeInclusive, Pair, StringOrT};
+use utils::NonEmptyRangeInclusive;
 
 /// Directive specification
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
@@ -37,9 +36,7 @@ pub struct Directive<'a> {
     /// Action of the directive
     pub action: DirectiveAction<DirectiveData>,
     /// Size in bytes of values associated with this directive
-    #[serde(deserialize_with = "utils::optional_from_str")]
     #[serde(default)]
-    #[schemars(with = "Option<StringOrT<usize>>")]
     pub size: Option<usize>,
 }
 
@@ -143,17 +140,9 @@ impl TryFrom<BitRange> for super::BitRange {
 /// Instruction syntax specification
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
 pub struct InstructionSyntax<'a, BitRange> {
-    /// Order of the fields/literal characters in the instruction text. `[fF]\d+` is interpreted as
-    /// the field with index i of the instruction. Other characters are interpreted literally
-    /// Ex: `F0 F3 F1 (F2)`
+    /// Syntax specification of the instruction. `[fF]\d+` is interpreted as the field with index
+    /// `i` of the instruction. Other characters are interpreted literally. Ex: `F0 F3 F1 (F2)`
     pub signature_definition: &'a str,
-    /// `signature_definition` in which `[fF]\d+` has been replaced with the type of each field in
-    /// the instruction. Valid values are those in `InstructionFieldType`, except `Co` and `Cop`.
-    /// The instruction opcode is replaced with its name. Spaces must also be replaced with `,`
-    pub signature: &'a str,
-    /// Same as `signature`, but replacing `[fF]\d+` with the field names
-    #[serde(rename = "signatureRaw")]
-    pub signature_raw: &'a str,
     /// Parameters of the instruction
     pub fields: Vec<super::InstructionField<'a, BitRange>>,
 }
@@ -162,217 +151,11 @@ impl<'a, T> TryFrom<InstructionSyntax<'a, T>> for super::InstructionSyntax<'a, T
     type Error = &'static str;
 
     fn try_from(value: InstructionSyntax<'a, T>) -> Result<Self, Self::Error> {
-        let format = |fmt: &str| {
-            let fmt = fmt.replace(" (", "(");
-            fmt.split_once(' ')
-                .map(|(opcode, syntax)| format!("{opcode} {}", syntax.replace(' ', ",")))
-                .unwrap_or(fmt)
-        };
-        let parser =
-            crate::parser::Instruction::build(&format(value.signature_definition), &value.fields)?;
+        let parser = crate::parser::Instruction::build(value.signature_definition, &value.fields)?;
         Ok(Self {
             parser,
             output_syntax: value.signature_definition,
-            user_syntax: format(value.signature_raw),
             fields: value.fields,
-        })
-    }
-}
-
-/// Architecture metadata attributes
-#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
-#[serde(tag = "name", content = "value")]
-pub enum Config<'a> {
-    /// Name of the architecture
-    Name(&'a str),
-    /// Word size
-    Bits(
-        #[serde(deserialize_with = "utils::from_str")]
-        #[schemars(with = "utils::StringOrT<usize>")]
-        usize,
-    ),
-    /// Description of the architecture
-    Description(&'a str),
-    /// Storage format of the architecture (big/little endian)
-    #[serde(rename = "Data Format")]
-    DataFormat(DataFormat),
-    /// Whether to enable memory alignment
-    #[serde(rename = "Memory Alignment")]
-    MemoryAlignment(Bool),
-    /// Name of the `main` function of the program
-    #[serde(rename = "Main Function")]
-    MainFunction(&'a str),
-    /// Whether to enable function parameter passing convention checks
-    #[serde(rename = "Passing Convention")]
-    PassingConvention(Bool),
-    /// Whether the register names should be case sensitive (`true`) or not (`false`)
-    #[serde(rename = "Sensitive Register Name")]
-    SensitiveRegisterName(Bool),
-    /// String to use as line comment prefix
-    CommentPrefix(&'a str),
-}
-
-/// Macro to generate an error message for an incorrect key value
-macro_rules! key_error {
-    ($i:expr, $name:ident) => {
-        return Err(concat!(
-            "unexpected key at index ",
-            stringify!($i),
-            ", expected key `",
-            stringify!($name),
-            "`"
-        ))
-    };
-}
-
-impl<'a> TryFrom<[Config<'a>; 9]> for super::Config<'a> {
-    type Error = &'static str;
-    fn try_from(value: [Config<'a>; 9]) -> Result<Self, Self::Error> {
-        /// Macro to unwrap the value of a field, checking that its key is correct
-        macro_rules! unwrap_field {
-            ($i:expr, $name:ident) => {
-                match value[$i] {
-                    Config::$name(x) => x.into(),
-                    _ => key_error!($i, $name),
-                }
-            };
-        }
-        Ok(Self {
-            name: unwrap_field!(0, Name),
-            word_size: unwrap_field!(1, Bits),
-            description: unwrap_field!(2, Description),
-            data_format: unwrap_field!(3, DataFormat),
-            memory_alignment: unwrap_field!(4, MemoryAlignment),
-            main_function: unwrap_field!(5, MainFunction),
-            passing_convention: unwrap_field!(6, PassingConvention),
-            sensitive_register_name: unwrap_field!(7, SensitiveRegisterName),
-            comment_prefix: unwrap_field!(8, CommentPrefix),
-        })
-    }
-}
-
-/// Memory layout attribute keys
-#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
-pub enum MemoryLayoutKeys {
-    #[serde(rename = "ktext start")]
-    KtextStart,
-    #[serde(rename = "ktext end")]
-    KtextEnd,
-    #[serde(rename = "kdata start")]
-    KdataStart,
-    #[serde(rename = "kdata end")]
-    KdataEnd,
-    #[serde(rename = "text start")]
-    TextStart,
-    #[serde(rename = "text end")]
-    TextEnd,
-    #[serde(rename = "data start")]
-    DataStart,
-    #[serde(rename = "data end")]
-    DataEnd,
-    #[serde(rename = "stack start")]
-    StackStart,
-    #[serde(rename = "stack end")]
-    StackEnd,
-}
-
-impl TryFrom<Vec<Pair<MemoryLayoutKeys, BaseN<16>>>> for super::MemoryLayout {
-    type Error = &'static str;
-    fn try_from(mut value: Vec<Pair<MemoryLayoutKeys, BaseN<16>>>) -> Result<Self, Self::Error> {
-        /// Macro to unwrap the value of a field, checking that its key is correct
-        macro_rules! unwrap_field {
-            ($i:expr, $name:ident) => {
-                match value[$i].name {
-                    MemoryLayoutKeys::$name => std::mem::take(&mut value[$i].value.0),
-                    _ => key_error!($i, $name),
-                }
-            };
-        }
-        /// Macro to check that two given sections don't overlap
-        macro_rules! check_overlap {
-            ($a:ident, $b:ident) => {
-                if ($a.contains($b.start()) || $b.contains($a.start())) {
-                    return Err(concat!(
-                        "section `",
-                        stringify!($a),
-                        "` overlaps with section `",
-                        stringify!($b),
-                        "`"
-                    ));
-                }
-            };
-        }
-
-        // unwrap values
-
-        // check for kernel segment
-        let (kernel_text, kernel_data, offset) = match value.len() {
-            10 => {
-                let ktext = (unwrap_field!(0, KtextStart), unwrap_field!(1, KtextEnd));
-                let kdata = (unwrap_field!(2, KdataStart), unwrap_field!(3, KdataEnd));
-
-                let ktext = NonEmptyRangeInclusive::<BigUint>::build(ktext.0, ktext.1)
-                    .ok_or("section `ktext` is empty")?;
-                let kdata = NonEmptyRangeInclusive::<BigUint>::build(kdata.0, kdata.1)
-                    .ok_or("section `kdata` is empty")?;
-
-                (Some(ktext), Some(kdata), 4)
-            }
-            6 => (None, None, 0),
-
-            _ => {
-                return Err("Incorrect number of key-value pairs for memory_layout");
-            }
-        };
-
-        let text = (
-            unwrap_field!(offset, TextStart),
-            unwrap_field!(offset + 1, TextEnd),
-        );
-        let data = (
-            unwrap_field!(offset + 2, DataStart),
-            unwrap_field!(offset + 3, DataEnd),
-        );
-        let stack = (
-            unwrap_field!(offset + 4, StackStart),
-            unwrap_field!(offset + 5, StackEnd),
-        );
-
-        let text = NonEmptyRangeInclusive::<BigUint>::build(text.0, text.1)
-            .ok_or("section `text` is empty")?;
-        let data = NonEmptyRangeInclusive::<BigUint>::build(data.0, data.1)
-            .ok_or("section `data` is empty")?;
-        let stack = NonEmptyRangeInclusive::<BigUint>::build(stack.0, stack.1)
-            .ok_or("section `stack` is empty")?;
-
-        // check overlap
-
-        if let Some(ktext) = &kernel_text {
-            if let Some(kdata) = &kernel_data {
-                check_overlap!(ktext, kdata);
-            }
-
-            check_overlap!(ktext, text);
-            check_overlap!(ktext, data);
-            check_overlap!(ktext, stack);
-        }
-
-        if let Some(kdata) = &kernel_data {
-            check_overlap!(kdata, text);
-            check_overlap!(kdata, data);
-            check_overlap!(kdata, stack);
-        }
-
-        check_overlap!(text, data);
-        check_overlap!(text, stack);
-        check_overlap!(data, stack);
-
-        Ok(Self {
-            kernel_text,
-            kernel_data,
-            text,
-            data,
-            stack,
         })
     }
 }

@@ -18,7 +18,7 @@
  * along with CREATOR.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//! Module containing the definition of wrappers for the compiler and generattion of `JS` bindings
+//! Module containing the definition of wrappers for the compiler and generation of `JS` bindings
 //! for interoperability
 
 use std::collections::HashMap;

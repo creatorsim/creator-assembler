@@ -25,7 +25,7 @@ use num_traits::{Num as _, One as _};
 use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Deserializer};
 
-use core::{fmt::Display, str::FromStr};
+use core::{ops::RangeInclusive, str::FromStr};
 
 /// Thin wrapper for big integers that can be deserialized from JSON, either from a JSON integer or
 /// a string representing an integer
@@ -62,21 +62,6 @@ impl FromStr for Integer {
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, JsonSchema)]
 pub struct BaseN<const N: u8>(#[schemars(with = "String")] pub BigUint);
 
-/// A key-value pair
-#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Pair<Keys, Value> {
-    pub name: Keys,
-    pub value: Value,
-}
-
-/// A value optionally stored as a string
-#[derive(Deserialize, JsonSchema)]
-#[serde(untagged)]
-pub enum StringOrT<'a, T> {
-    String(&'a str),
-    T(T),
-}
-
 impl<'de> Deserialize<'de> for Integer {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = serde_json::Number::deserialize(deserializer)?;
@@ -90,52 +75,6 @@ impl<'de, const N: u8> Deserialize<'de> for BaseN<N> {
         BigUint::from_str_radix(s.trim_start_matches("0x"), N.into())
             .map(Self)
             .map_err(Error::custom)
-    }
-}
-
-/// Deserialization function for a value serialized either as a string or as the value itself
-pub fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: FromStr + Deserialize<'de>,
-    <T as FromStr>::Err: Display,
-{
-    match Deserialize::deserialize(deserializer)? {
-        StringOrT::T(i) => Ok(i),
-        StringOrT::String(s) => s.parse::<T>().map_err(Error::custom),
-    }
-}
-
-/// Deserialization function for an optional value serialized either as a string or as the value
-/// itself
-pub fn optional_from_str<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-where
-    D: Deserializer<'de>,
-    T: FromStr + Deserialize<'de>,
-    <T as FromStr>::Err: Display,
-{
-    match Deserialize::deserialize(deserializer)? {
-        None => Ok(None),
-        Some(StringOrT::T(i)) => Ok(Some(i)),
-        Some(StringOrT::String(s)) => s.parse::<T>().map(Some).map_err(serde::de::Error::custom),
-    }
-}
-
-/// A boolean value serialized as a string of a 0/1
-#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Bool {
-    #[serde(rename = "1")]
-    True,
-    #[serde(rename = "0")]
-    False,
-}
-
-impl From<Bool> for bool {
-    fn from(value: Bool) -> Self {
-        match value {
-            Bool::True => true,
-            Bool::False => false,
-        }
     }
 }
 
@@ -199,6 +138,20 @@ macro_rules! impl_NonEmptyRangeInclusive {
 
 impl_NonEmptyRangeInclusive!(BigUint, usize);
 
+impl<'de> Deserialize<'de> for NonEmptyRangeInclusive<BigUint> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let range: RangeInclusive<Integer> = Deserialize::deserialize(deserializer)?;
+        let (start, end) = range.into_inner();
+        Self::build(start.0, end.0)
+            .ok_or("section can't be empty")
+            .map_err(Error::custom)
+    }
+}
+
+impl JsonSchema for NonEmptyRangeInclusive<BigUint> {
+    schema_from!(impl: RangeInclusive<Integer>);
+}
+
 /// Exclusive non-empty range with a possibly unbound end
 #[derive(Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 #[serde(try_from = "(u64, Option<u64>)")]
@@ -225,23 +178,26 @@ impl TryFrom<(u64, Option<u64>)> for RangeFrom {
 
 /// Derive implementation of [`JsonSchema`] from the implementation of a different type
 macro_rules! schema_from {
+    (impl: $src:ty) => {
+        fn schema_name() -> String {
+            <$src as JsonSchema>::schema_name()
+        }
+
+        fn schema_id() -> std::borrow::Cow<'static, str> {
+            <$src as JsonSchema>::schema_id()
+        }
+
+        fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+            <$src as JsonSchema>::json_schema(gen)
+        }
+
+        fn is_referenceable() -> bool {
+            <$src as JsonSchema>::is_referenceable()
+        }
+    };
     ($dst:ident$(<$($lt:lifetime)? $($(,)? $t:ident)?>)?, $src:ty) => {
         impl $(<$($lt)? $(, $t: JsonSchema)?>)? JsonSchema for $dst$(<$($lt)? $(, $t)?>)? {
-            fn schema_name() -> String {
-                <$src as JsonSchema>::schema_name()
-            }
-
-            fn schema_id() -> std::borrow::Cow<'static, str> {
-                <$src as JsonSchema>::schema_id()
-            }
-
-            fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-                <$src as JsonSchema>::json_schema(gen)
-            }
-
-            fn is_referenceable() -> bool {
-                <$src as JsonSchema>::is_referenceable()
-            }
+            $crate::architecture::utils::schema_from!(impl: $src);
         }
     };
 }

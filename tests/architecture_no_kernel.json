@@ -1,42 +1,15 @@
 {
-  "arch_conf": [
-    {
-      "name": "Name",
-      "value": "Test"
-    },
-    {
-      "name": "Bits",
-      "value": "32"
-    },
-    {
-      "name": "Description",
-      "value": "Test architecture"
-    },
-    {
-      "name": "Data Format",
-      "value": "big_endian"
-    },
-    {
-      "name": "Memory Alignment",
-      "value": "1"
-    },
-    {
-      "name": "Main Function",
-      "value": "main"
-    },
-    {
-      "name": "Passing Convention",
-      "value": "1"
-    },
-    {
-      "name": "Sensitive Register Name",
-      "value": "1"
-    },
-    {
-      "name": "CommentPrefix",
-      "value": "#"
-    }
-  ],
+  "config": {
+    "name": "Test",
+    "word_size": 32,
+    "description": "Test architecture",
+    "endianness": "big_endian",
+    "memory_alignment": true,
+    "main_function": "main",
+    "passing_convention": true,
+    "sensitive_register_name": false,
+    "comment_prefix": "#"
+  },
   "components": [
     {
       "name": "Integer registers",
@@ -44,10 +17,9 @@
       "double_precision": false,
       "elements": [
         {
-          "name": [
-            "x0"
-          ],
-          "nbits": "32",
+          "name": ["x0"],
+          "nbits": 32,
+          "encoding": 0,
           "value": 0,
           "default_value": 0,
           "properties": []
@@ -60,8 +32,6 @@
       "name": "nop",
       "type": "Arithmetic integer",
       "signature_definition": "F0",
-      "signature": "nop",
-      "signatureRaw": "nop",
       "co": "1111111",
       "cop": "0000000000",
       "nwords": 1,
@@ -78,12 +48,10 @@
           "type": "cop",
           "startbit": 31,
           "stopbit": 28,
-          "valueField": "1111"
+          "value": "1111"
         }
       ],
-      "definition": "",
-      "separated": [],
-      "help": ""
+      "definition": ""
     }
   ],
   "pseudoinstructions": [],
@@ -111,33 +79,21 @@
     {
       "name": ".zero",
       "action": "space",
-      "size": "1"
+      "size": 1
     }
   ],
-  "memory_layout": [
-    {
-      "name": "text start",
-      "value": "0x00000000"
+  "memory_layout": {
+    "text": {
+      "start": 0,
+      "end": 15
     },
-    {
-      "name": "text end",
-      "value": "0x0000000f"
+    "data": {
+      "start": 16,
+      "end": 31
     },
-    {
-      "name": "data start",
-      "value": "0x00000010"
-    },
-    {
-      "name": "data end",
-      "value": "0x0000001f"
-    },
-    {
-      "name": "stack start",
-      "value": "0x0FFFFFFC"
-    },
-    {
-      "name": "stack end",
-      "value": "0x0FFFFFFF"
+    "stack": {
+      "start": 268435452,
+      "end": 268435455
     }
-  ]
+  }
 }

@@ -6,15 +6,15 @@ use std::collections::HashMap;
 use std::hint::black_box;
 use std::time::Duration;
 
-use creator_compiler::parser::AST;
-use creator_compiler::prelude::*;
+use creator_assembler::parser::AST;
+use creator_assembler::prelude::*;
 
 static ARCH_JSON: &str = include_str!("arch.json");
 static CODE: &str = include_str!("sample.s");
 static NAME: &str = "sample.s";
 
 fn parse(arch: &Architecture) -> AST {
-    parser::parse(black_box(arch.arch_conf.comment_prefix), black_box(CODE))
+    parser::parse(black_box(arch.config.comment_prefix), black_box(CODE))
         .map_err(|e| eprintln!("{}", e.render(NAME, CODE, true)))
         .unwrap()
 }

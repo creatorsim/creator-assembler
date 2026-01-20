@@ -69,7 +69,7 @@ impl<T: std::fmt::Display> crate::RenderError for Vec<Rich<'_, T, Span>> {
                             // The implementation of ToString for Rich pattern adds quotes
                             // automatically, but we will add them later
                             RichPattern::Token(t) => t.to_string(),
-                            RichPattern::Identifier(i) => i.to_string(),
+                            RichPattern::Identifier(i) => i.clone(),
                             _ => e.to_string(),
                         };
                         format!(

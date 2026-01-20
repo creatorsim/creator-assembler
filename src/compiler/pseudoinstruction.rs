@@ -33,13 +33,13 @@ use regex::{Captures, Regex};
 use std::fmt::Write as _;
 use std::sync::LazyLock;
 
-use crate::architecture::{FloatType, Pseudoinstruction, RegisterType};
+use crate::architecture::Pseudoinstruction;
 use crate::number::Number;
 use crate::parser::{ParseError, Token};
 use crate::span::Range;
 
 use super::{ArgumentType, Context, ErrorData, ErrorKind, InstructionDefinition};
-use super::{Expr, ParsedArgs};
+use super::{Expr, ParsedArgs, ParsedArgument};
 use super::{Span, Spanned, SpannedErr};
 
 /// Pseudoinstruction evaluation error kind
@@ -227,9 +227,6 @@ pub fn expand<'arch>(
     args: &ParsedArgs,
 ) -> Result<ExpandedInstructions<'arch>, ErrorData> {
     // Regex used
-    // Register name should be replaced with the register name of the i-th register forming this
-    // double precision register
-    static ALIAS_DOUBLE: LazyLock<Regex> = crate::regex!(r"aliasDouble\(([^;]+);(\d+)\)");
     // Gets the value of the i-th argument from bits j to k, evaluating the argument as the given
     // type
     static FIELD_VALUE: LazyLock<Regex> = crate::regex!(r"Field\.(\d+)\.\((\d+),(\d+)\)\.(\w+)");
@@ -263,55 +260,25 @@ pub fn expand<'arch>(
 
     // Expansion
     let mut def = instruction.definition.replace('\n', "");
-    let case = arch.arch_conf.sensitive_register_name;
     let mods = &arch.modifiers;
-
-    // Replace occurrences of `AliasDouble()`
-    while let Some(x) = ALIAS_DOUBLE.captures(&def) {
-        let (_, [name, i]) = x.extract();
-        // Get the user's register name
-        let name = get_arg(name).ok_or_else(|| {
-            Error {
-                definition: def.clone(),
-                span: capture_span(&x, 1),
-                kind: Kind::UnknownFieldName(name.to_owned()),
-            }
-            .compile_error(instruction, span)
-        })?;
-        let name = &reg_name(&name.value)?;
-        let i: usize = num(i);
-        // Find the register name and replace it
-        for file in arch.find_reg_files(RegisterType::Float(FloatType::Double)) {
-            if let Some((_, reg, _)) = file.find_register(name, case) {
-                let name = reg
-                    .simple_reg
-                    .and_then(|regs| regs.get(i).copied())
-                    .unwrap_or(name);
-                def.replace_range(capture_span(&x, 0), name);
-                break;
-            }
-        }
-    }
 
     // Replace occurrences of `Field.number`
     while let Some(x) = FIELD_VALUE.captures(&def) {
         let (_, [arg, start_bit, end_bit, ty]) = x.extract();
         let arg_num = num(arg) - 1;
         // Get the user's argument expression
-        let (value, value_span) = &args
-            .get(arg_num)
-            .ok_or_else(|| {
-                Error {
-                    definition: def.clone(),
-                    span: capture_span(&x, 1),
-                    kind: Kind::UnknownFieldNumber {
-                        idx: arg_num + 1,
-                        size: args.len(),
-                    },
-                }
-                .compile_error(instruction, span)
-            })?
-            .value;
+        let arg: &ParsedArgument = args.get(arg_num).ok_or_else(|| {
+            Error {
+                definition: def.clone(),
+                span: capture_span(&x, 1),
+                kind: Kind::UnknownFieldNumber {
+                    idx: arg_num + 1,
+                    size: args.len(),
+                },
+            }
+            .compile_error(instruction, span)
+        })?;
+        let (value, value_span) = &arg.value;
         // Get the range of bits requested
         let start_bit = num(start_bit);
         let end_bit = num(end_bit);

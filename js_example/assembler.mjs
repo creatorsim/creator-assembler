@@ -6,9 +6,9 @@
  **/
 
 /**
- * @param {import("../pkg/web/creator_compiler.d.ts")} wasm
+ * @param {import("../pkg/web/creator_assembler.d.ts")} wasm
  * @param {string} json_arch
- * @returns {import("../pkg/web/creator_compiler.d.ts").ArchitectureJS}
+ * @returns {import("../pkg/web/creator_assembler.d.ts").ArchitectureJS}
  **/
 export function load(wasm, json_arch) {
     const arch = wasm.ArchitectureJS.from_json(json_arch);
@@ -16,8 +16,8 @@ export function load(wasm, json_arch) {
 }
 
 /**
- * @param {import("../pkg/web/creator_compiler.d.ts")} wasm
- * @param {import("../pkg/web/creator_compiler.d.ts").DataCategoryJS} category
+ * @param {import("../pkg/web/creator_assembler.d.ts")} wasm
+ * @param {import("../pkg/web/creator_assembler.d.ts").DataCategoryJS} category
  * @returns {string}
  **/
 function data_category(wasm, category) {
@@ -30,8 +30,8 @@ function data_category(wasm, category) {
 }
 
 /**
- * @param {import("../pkg/web/creator_compiler.d.ts")} wasm
- * @param {import("../pkg/web/creator_compiler.d.ts").ArchitectureJS} arch
+ * @param {import("../pkg/web/creator_assembler.d.ts")} wasm
+ * @param {import("../pkg/web/creator_assembler.d.ts").ArchitectureJS} arch
  * @param {string} code
  * @returns {CompilationResult}
  **/

@@ -1,11 +1,11 @@
-import init, * as wasm from "../pkg/web/creator_compiler.js";
-import * as compiler from "./compiler.mjs";
+import init, * as wasm from "../pkg/web/creator_assembler.js";
+import * as assembler from "./assembler.mjs";
 
 await init({})
 
 const json_arch = await (await fetch("../tests/architecture.json")).text()
 
-const arch = compiler.load(wasm, json_arch)
+const arch = assembler.load(wasm, json_arch)
 console.log(arch.toString())
 window["arch"] = arch
 
@@ -14,7 +14,7 @@ const out = document.getElementById("result");
 
 document.getElementById("compile_btn").onclick = function () {
   try {
-    const compiled = compiler.compile(wasm, arch, src.value);
+    const compiled = assembler.compile(wasm, arch, src.value);
     window["instructions"] = compiled.instructions
     window["data"] = compiled.data
     window["instructions"] = compiled.label_table
