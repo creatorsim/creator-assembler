@@ -499,7 +499,7 @@ pub struct InterruptHandlers {
 pub struct Interrupts {
     /// Interrupt handler configuration
     pub handlers: InterruptHandlers,
-    /// JS code to be executed in order to check what type of interrupt ocurred.
+    /// JS code to be executed in order to check what type of interrupt occurred.
     /// It must return an `InterruptType` (if an interrupt happened) or `null`
     /// (if it didn't)
     pub check: String,
