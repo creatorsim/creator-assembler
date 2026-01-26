@@ -23,7 +23,8 @@
 //! Contains the definition of the AST, with the entry point for parsing code being the [`parse()`]
 //! function
 
-use chumsky::{input::ValueInput, prelude::*};
+use chumsky::input::{BorrowInput, ValueInput};
+use chumsky::prelude::*;
 
 use crate::span::{Span, Spanned};
 
@@ -96,17 +97,19 @@ pub type AST = Vec<ASTNode>;
 #[must_use]
 fn parser<'tokens, I>() -> Parser!('tokens, I, AST)
 where
-    I: ValueInput<'tokens, Token = Token, Span = Span>,
+    I: ValueInput<'tokens, Token = Token, Span = Span>
+        + BorrowInput<'tokens, Token = Token, Span = Span>,
 {
     // Newline token
     let newline = || just(Token::Ctrl('\n'));
     // Identifiers
-    let ident = select! { Token::Identifier(ident) = e => (ident, e.span())}.labelled("identifier");
-    let label = select! { Token::Label(name) = e => (name, e.span())}
+    let ident = select_ref! { Token::Identifier(ident) = e => (ident.clone(), e.span())}
+        .labelled("identifier");
+    let label = select_ref! { Token::Label(name) = e => (name.clone(), e.span())}
         .padded_by(newline().repeated())
         .labelled("label");
-    let directive_name =
-        select! { Token::Directive(name) = e => (name, e.span())}.labelled("directive name");
+    let directive_name = select_ref! { Token::Directive(name) = e => (name.clone(), e.span())}
+        .labelled("directive name");
 
     // Any amount of labels: `labels -> label*`
     let labels = label.repeated().collect().labelled("labels");
@@ -132,7 +135,8 @@ where
                 .rewind()
                 .or(expression::parser()
                     .map(|(expr, _)| Data::Number(expr))
-                    .or(select! { Token::String(s) => Data::String(s) }.labelled("string"))
+                    .or(select_ref! { Token::String(s) => Data::String(s.clone()) }
+                        .labelled("string"))
                     .map_with(|x, e| (x, e.span()))
                     .separated_by(just(Token::Ctrl(',')).padded_by(newline().repeated()))
                     .collect()

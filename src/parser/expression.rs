@@ -24,7 +24,7 @@
 //! of methods being defined in the methods of the [`Expr`] type
 
 use chumsky::pratt::{infix, left, prefix};
-use chumsky::{input::ValueInput, prelude::*};
+use chumsky::{input::BorrowInput, prelude::*};
 use num_bigint::{BigInt, BigUint};
 use std::cmp::Ordering;
 
@@ -215,22 +215,22 @@ impl Expr {
 #[must_use]
 pub fn parser<'tokens, I>() -> Parser!('tokens, I, Spanned<Expr>)
 where
-    I: ValueInput<'tokens, Token = Token, Span = Span>,
+    I: BorrowInput<'tokens, Token = Token, Span = Span>,
 {
     // Literal values
-    let literal = select! {
-        Token::Integer(x) => Expr::Integer(x),
-        Token::Float(x) = e => Expr::Float((x.into(), e.span())),
-        Token::Character(c) => Expr::Character(c),
-        Token::Identifier(ident) = e => Expr::Identifier((ident, e.span())),
-        Token::Directive(ident) = e => Expr::Identifier((ident, e.span())),
+    let literal = select_ref! {
+        Token::Integer(x) => Expr::Integer(x.clone()),
+        Token::Float(x) = e => Expr::Float(((*x).into(), e.span())),
+        Token::Character(c) => Expr::Character(*c),
+        Token::Identifier(ident) = e => Expr::Identifier((ident.clone(), e.span())),
+        Token::Directive(ident) = e => Expr::Identifier((ident.clone(), e.span())),
     }
     .labelled("literal");
 
     // Operator parser
     macro_rules! op {
         (:$name:literal: $($i:ident => $o:expr),+ $(,)?) => {
-            select! { $(Token::Operator(Operator::$i) => $o,)+ }
+            select_ref! { $(Token::Operator(Operator::$i) => $o,)+ }
                 .map_with(|x, e| (x, e.span()))
                 .labelled(concat!($name, " operator"))
         };
@@ -259,8 +259,9 @@ where
         // paren_expr: `paren_expr -> ( expression )`
         let paren_expr = expr.delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')));
         // modifier: `modifier -> % ident paren_expr`
+        let ident = select_ref! {Token::Identifier(name) => name.clone() }.labelled("identifier");
         let modifier = just(Token::Operator(Operator::Percent))
-            .ignore_then(select! {Token::Identifier(name) => name }.labelled("identifier"))
+            .ignore_then(ident)
             .map_with(|name, e| (UnaryOp::Modifier(name), e.span()))
             .then(paren_expr.clone())
             .map(|(op, expr)| Expr::UnaryOp {
