@@ -116,19 +116,18 @@ impl std::fmt::Display for Integer {
 }
 
 #[allow(clippy::unwrap_used)]
-#[allow(clippy::cast_sign_loss)]
 #[cfg(test)]
 mod test {
     use super::{ErrorKind, Integer, IntegerType};
 
     #[test]
     fn bits_signed() {
-        for (x, x_str) in [(-8, "1000"), (-5, "1011"), (4, "0100"), (7, "0111")] {
+        for (x, x_str) in [(-8i32, "1000"), (-5, "1011"), (4, "0100"), (7, "0111")] {
             let val = Integer::build(x.into(), 4, None, Some(true));
             assert_eq!(
                 val,
                 Ok(Integer {
-                    value: (x as u32 & 0b1111).into(),
+                    value: (x.cast_unsigned() & 0b1111).into(),
                     size: 4,
                     r#type: None,
                 })
@@ -148,7 +147,7 @@ mod test {
             assert_eq!(
                 Integer::build(x.into(), 64, None, Some(true)),
                 Ok(Integer {
-                    value: (x as u64).into(),
+                    value: x.cast_unsigned().into(),
                     size: 64,
                     r#type: None,
                 })
@@ -158,13 +157,12 @@ mod test {
 
     #[test]
     fn bits_unsigned() {
-        #[allow(clippy::cast_sign_loss)]
-        for (x, x_str) in [(0, "0000"), (4, "0100"), (15, "1111")] {
+        for (x, x_str) in [(0u32, "0000"), (4, "0100"), (15, "1111")] {
             let val = Integer::build(x.into(), 4, None, Some(false));
             assert_eq!(
                 val,
                 Ok(Integer {
-                    value: (x as u32 & 0b1111).into(),
+                    value: (x & 0b1111).into(),
                     size: 4,
                     r#type: None,
                 })
@@ -181,7 +179,7 @@ mod test {
             assert_eq!(
                 Integer::build(x.into(), 64, None, Some(false)),
                 Ok(Integer {
-                    value: (x as u64).into(),
+                    value: x.cast_unsigned().into(),
                     size: 64,
                     r#type: None,
                 })
@@ -191,13 +189,12 @@ mod test {
 
     #[test]
     fn byte() {
-        #[allow(clippy::cast_sign_loss)]
-        for (x, x_str) in [(0, "0"), (4, "4"), (15, "F"), (-8, "8"), (-5, "B")] {
+        for (x, x_str) in [(0i32, "0"), (4, "4"), (15, "F"), (-8, "8"), (-5, "B")] {
             let val = Integer::build(x.into(), 4, Some(IntegerType::Byte), None);
             assert_eq!(
                 val,
                 Ok(Integer {
-                    value: (x as u32 & 0b1111).into(),
+                    value: (x.cast_unsigned() & 0b1111).into(),
                     size: 4,
                     r#type: Some(IntegerType::Byte),
                 })

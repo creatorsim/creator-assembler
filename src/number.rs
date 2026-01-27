@@ -274,6 +274,7 @@ impl PartialOrd for Number {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod test {
     use super::*;
     use crate::span::{test::*, DEFAULT_SPAN};
@@ -655,7 +656,6 @@ mod test {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used, clippy::cast_possible_wrap)]
     fn modify_split() {
         let hi = Modifier {
             range: (12, Some(32)).try_into().unwrap(),
@@ -667,7 +667,7 @@ mod test {
             lower_signed: false,
             output_signed: true,
         };
-        let neg = |x: u16| (x as i16).into();
+        let neg = |x: u16| x.cast_signed().into();
 
         let x = Number::from(0xdead_beef_u32);
         let x_hi: BigInt = x.clone().modify(hi).try_into().unwrap();
@@ -687,14 +687,13 @@ mod test {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used, clippy::cast_possible_wrap)]
     fn modify() {
         let modifier = |range: (u64, Option<u64>), lower_signed, output_signed| Modifier {
             range: range.try_into().unwrap(),
             lower_signed,
             output_signed,
         };
-        let neg = |x: u8| i32::from(x as i8);
+        let neg = |x: u8| x.cast_signed().into();
         let mod1 = modifier((4, None), true, false);
         let mod2 = modifier((4, None), false, false);
         let mod3 = modifier((4, Some(8)), true, false);

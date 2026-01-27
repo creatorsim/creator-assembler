@@ -1759,7 +1759,6 @@ mod test {
             ("word ", 4, IntegerType::Word, 2u64.pow(32) - 128),
             ("dword", 8, IntegerType::DoubleWord, u64::MAX - 127),
         ];
-        #[allow(clippy::cast_possible_wrap)]
         for (name, size, r#type, val) in test_cases {
             let bits = usize::from(size * 8);
             // 1 argument
@@ -1784,7 +1783,7 @@ mod test {
             assert_eq!(
                 x.data_memory,
                 vec![
-                    data(16, &["b"], int_val(val as i64, bits, r#type)),
+                    data(16, &["b"], int_val(val.cast_signed(), bits, r#type)),
                     data((16 + size).into(), &[], int_val(255, bits, r#type))
                 ]
             );
