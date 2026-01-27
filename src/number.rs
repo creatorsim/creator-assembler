@@ -42,7 +42,7 @@ pub enum Number {
 }
 
 impl Number {
-    /// Convines the origin spans of 2 numbers, assuming either one or both of them are floats
+    /// Combines the origin spans of 2 numbers, assuming either one or both of them are floats
     ///
     /// # Panics
     ///
