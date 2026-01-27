@@ -291,7 +291,6 @@ pub fn expand<'arch>(
             .compile_error(instruction, span));
         }
         // Evaluate the expression according to the requested type
-        #[allow(clippy::cast_possible_truncation)]
         let field = match ty {
             "int" => {
                 // Convert the number to binary using two's complement
@@ -369,7 +368,6 @@ pub fn expand<'arch>(
             })?
             .value;
         // Calculate the size of the expression
-        #[allow(clippy::cast_possible_truncation)]
         let size = match value.eval(ident_eval, mods)? {
             Number::Int(x) => x.bits() + 1,
             // If the result is a float, assume it is in single precision

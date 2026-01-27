@@ -80,7 +80,6 @@ impl Integer {
         // Mask for bits outside of the specified size
         let mask = (BigInt::from(1u8) << size) - 1u8;
         let value = BigUint::try_from(value & mask);
-        #[allow(clippy::cast_sign_loss)]
         Ok(Self {
             value: value.expect("AND'ing a bigint with a positive should always return a positive"),
             size,
