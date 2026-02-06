@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,7 +18,7 @@ jobs:
       - name: Install latest tested rust version
         uses: dtolnay/rust-toolchain@1.93
         with:
-            components: rustfmt, clippy
+          components: rustfmt, clippy
       - name: Run cargo check
         run: cargo check --benches --tests --examples --all-features
       - name: Run cargo clippy
@@ -28,7 +28,7 @@ jobs:
       - name: Run cargo doc
         run: cargo doc --all-features --no-deps
         env:
-            RUSTDOCFLAGS: --cfg docsrs
+          RUSTDOCFLAGS: --cfg docsrs
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -52,7 +52,7 @@ jobs:
       - name: Run cargo test
         run: cargo test --all-features
         env:
-            RUSTDOCFLAGS: --cfg docsrs
+          RUSTDOCFLAGS: --cfg docsrs
   msrv:
     name: MSRV
     runs-on: ubuntu-latest
@@ -61,6 +61,6 @@ jobs:
       - name: Install MSRV
         uses: dtolnay/rust-toolchain@1.89
         with:
-            components: rustfmt, clippy
+          components: rustfmt, clippy
       - name: Check MSRV compatibility
         run: cargo check --all-features
