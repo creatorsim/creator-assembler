@@ -103,6 +103,8 @@ impl fmt::Display for ArgNum {
 /// Returns `None` if the distance exceeds the limit.
 ///
 /// [edit distance]: https://en.wikipedia.org/wiki/Edit_distance
+// We need to collect the string in a vector of chars to avoid iterating over it for each char
+#[allow(clippy::needless_collect)]
 fn edit_distance(a: &str, b: &str, limit: usize) -> Option<usize> {
     use std::{cmp, mem};
     let mut a = &a.chars().collect::<Vec<_>>()[..];
