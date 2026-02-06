@@ -29,6 +29,21 @@ jobs:
         run: cargo doc --all-features --no-deps
         env:
             RUSTDOCFLAGS: --cfg docsrs
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install wasm-pack
+        run: npm install -g wasm-pack # Use precompiled binary
+      - name: Run cargo build (debug)
+        run: cargo build --all-targets
+      - name: Run cargo build (release)
+        run: cargo build --all-targets --release
+      - name: Build for WASM (debug)
+        run: ./build.sh debug
+      - name: Build for WASM (release)
+        run: ./build.sh release
   test:
     name: Test
     runs-on: ubuntu-latest
