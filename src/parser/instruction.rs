@@ -146,7 +146,10 @@ impl Instruction {
                 // First token is an identifier => assume it's the instruction name
                 // There is no opcode field specification => assume it shouldn't be included in the
                 // output
-                Some(Token::Identifier(_)) => vec![],
+                Some(Token::Identifier(_)) => {
+                    syntax.push_str("opcode ");
+                    vec![]
+                }
                 _ => return Err("unexpected first token of signature definition"),
             })
             .boxed();
