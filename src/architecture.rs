@@ -127,9 +127,9 @@ pub struct Component<'a> {
     /// Name of the register file
     pub name: &'a str,
     /// Type of the registers
-    r#type: ComponentType,
+    pub r#type: ComponentType,
     /// Whether the registers have double the word size
-    double_precision: bool,
+    pub double_precision: bool,
     /// Registers in this file
     pub elements: Vec<Register<'a>>,
 }
@@ -476,15 +476,15 @@ pub enum AlignmentType {
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
 pub struct MemoryLayout {
     /// Addresses reserved for the kernel text segment
-    ktext: Option<NonEmptyRangeInclusive<BigUint>>,
+    pub ktext: Option<NonEmptyRangeInclusive<BigUint>>,
     /// Addresses reserved for the kernel data segment
-    kdata: Option<NonEmptyRangeInclusive<BigUint>>,
+    pub kdata: Option<NonEmptyRangeInclusive<BigUint>>,
     /// Addresses reserved for the text segment
-    text: NonEmptyRangeInclusive<BigUint>,
+    pub text: NonEmptyRangeInclusive<BigUint>,
     /// Addresses reserved for the data segment
-    data: NonEmptyRangeInclusive<BigUint>,
+    pub data: NonEmptyRangeInclusive<BigUint>,
     /// Addresses reserved for the stack segment
-    stack: NonEmptyRangeInclusive<BigUint>,
+    pub stack: NonEmptyRangeInclusive<BigUint>,
 }
 
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
