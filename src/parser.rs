@@ -1,6 +1,5 @@
 /*
- * Copyright 2018-2024 Felix Garcia Carballeira, Alejandro Calderon Mateos, Diego Camarmas Alonso,
- * Álvaro Guerrero Espinosa
+ * Copyright 2018-2026 CREATOR Team.
  *
  * This file is part of CREATOR.
  *
