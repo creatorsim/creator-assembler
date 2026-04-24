@@ -10,12 +10,12 @@
     "sensitive_register_name": false,
     "comment_prefix": "#"
   },
-  "components": [
+  "register_files": [
     {
       "name": "Integer registers",
-      "type": "int_registers",
+      "type": "int",
       "double_precision": false,
-      "elements": [
+      "registers": [
         {
           "name": ["x0", "ZeRo"],
           "nbits": 32,

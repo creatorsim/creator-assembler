@@ -316,7 +316,7 @@ impl Info for Error<'_> {
             Kind::UnknownRegister { name, file } => {
                 let files = self.ctx.arch.find_reg_files(*file);
                 let registers = files.flat_map(|file| {
-                    file.elements
+                    file.registers
                         .iter()
                         .flat_map(|reg| reg.name.iter().copied())
                 });

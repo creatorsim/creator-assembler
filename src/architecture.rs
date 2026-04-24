@@ -43,9 +43,9 @@ pub struct Architecture<'a> {
     /// name
     #[serde(borrow)]
     pub config: Config<'a>,
-    /// Components (register files) of the architecture. It's assumed that the first register of
+    /// Register files of the architecture. It's assumed that the first register of
     /// the first file will contain the program counter
-    pub components: Vec<Component<'a>>,
+    pub register_files: Vec<RegisterFile<'a>>,
     /// Instructions allowed
     pub instructions: Vec<Instruction<'a>>,
     /// Pseudoinstructions allowed
@@ -122,7 +122,7 @@ pub enum Endianness {
 
 /// Register file
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
-pub struct Component<'a> {
+pub struct RegisterFile<'a> {
     /// Name of the register file
     pub name: &'a str,
     /// Type of the registers
@@ -130,20 +130,18 @@ pub struct Component<'a> {
     /// Whether the registers have double the word size
     pub double_precision: bool,
     /// Registers in this file
-    pub elements: Vec<Register<'a>>,
+    pub registers: Vec<Register<'a>>,
 }
 
 /// Types of register files allowed
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum ComponentType {
     /// Control registers
-    #[serde(rename = "ctrl_registers")]
     Ctrl,
     /// Integer registers
-    #[serde(rename = "int_registers")]
     Int,
     /// Floating point registers
-    #[serde(rename = "fp_registers")]
     Float,
 }
 
@@ -671,8 +669,8 @@ impl Architecture<'_> {
     /// # Parameters
     ///
     /// * `type`: type of the file wanted
-    pub fn find_reg_files(&self, r#type: RegisterType) -> impl Iterator<Item = &Component<'_>> {
-        let eq = move |file: &&Component| match r#type {
+    pub fn find_reg_files(&self, r#type: RegisterType) -> impl Iterator<Item = &RegisterFile<'_>> {
+        let eq = move |file: &&RegisterFile| match r#type {
             RegisterType::Int => file.r#type == ComponentType::Int,
             RegisterType::Ctrl => file.r#type == ComponentType::Ctrl,
             RegisterType::Float(x) => {
@@ -680,11 +678,11 @@ impl Architecture<'_> {
                     && (x == FloatType::Double) == file.double_precision
             }
         };
-        self.components.iter().filter(eq)
+        self.register_files.iter().filter(eq)
     }
 }
 
-impl Component<'_> {
+impl RegisterFile<'_> {
     /// Finds the register with the given name, returning its index in its register file, the
     /// register definition, and the name that matched
     ///
@@ -694,7 +692,7 @@ impl Component<'_> {
     /// * `case`: whether the find should be case sensitive (`true`) or not (`false`)
     #[must_use]
     pub fn find_register(&self, name: &str, case: bool) -> Option<(&Register<'_>, &str)> {
-        self.elements.iter().find_map(|reg| {
+        self.registers.iter().find_map(|reg| {
             let name = reg.name.iter().find(|&&n| {
                 if case {
                     n == name

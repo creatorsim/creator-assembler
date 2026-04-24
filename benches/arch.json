@@ -10,12 +10,12 @@
     "sensitive_register_name": true,
     "comment_prefix": "#"
   },
-  "components": [
+  "register_files": [
     {
       "name": "Control registers",
-      "type": "ctrl_registers",
+      "type": "ctrl",
       "double_precision": false,
-      "elements": [
+      "registers": [
         {
           "name": ["PC"],
           "nbits": 32,
@@ -44,9 +44,9 @@
     },
     {
       "name": "Integer registers",
-      "type": "int_registers",
+      "type": "int",
       "double_precision": false,
-      "elements": [
+      "registers": [
         {
           "name": ["x0"],
           "nbits": 32,
@@ -75,9 +75,9 @@
     },
     {
       "name": "Floating point registers",
-      "type": "fp_registers",
+      "type": "float",
       "double_precision": true,
-      "elements": [
+      "registers": [
         {
           "name": ["ft0"],
           "nbits": 64,
@@ -106,9 +106,9 @@
     },
     {
       "name": "Simple floating point registers",
-      "type": "fp_registers",
+      "type": "float",
       "double_precision": false,
-      "elements": [
+      "registers": [
         {
           "name": ["fs0"],
           "nbits": 32,
