@@ -27,6 +27,36 @@ use super::{utils, DirectiveAction};
 use super::{AlignmentType, FloatType, IntegerType, StringType};
 use utils::NonEmptyRangeInclusive;
 
+/// Type of registers allowed
+#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+#[serde(tag = "type")]
+pub enum RegisterType {
+    /// Control registers
+    Ctrl,
+    /// Integer registers
+    Int,
+    /// Floating point registers
+    Float {
+        /// Whether the registers have double the word size
+        double_precision: bool,
+    },
+}
+
+impl From<RegisterType> for super::RegisterType {
+    fn from(value: RegisterType) -> Self {
+        match value {
+            RegisterType::Ctrl => Self::Ctrl,
+            RegisterType::Int => Self::Int,
+            RegisterType::Float { double_precision } => Self::Float(if double_precision {
+                FloatType::Double
+            } else {
+                FloatType::Float
+            }),
+        }
+    }
+}
+
 /// Directive specification
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Directive<'a> {

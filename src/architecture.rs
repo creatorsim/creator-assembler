@@ -120,27 +120,15 @@ pub struct RegisterFile<'a> {
     /// Name of the register file
     pub name: &'a str,
     /// Type of the registers
-    pub r#type: ComponentType,
-    /// Whether the registers have double the word size
-    pub double_precision: bool,
+    #[serde(flatten)]
+    pub r#type: RegisterType,
     /// Registers in this file
     pub registers: Vec<Register<'a>>,
 }
 
-/// Types of register files allowed
-#[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone, Copy)]
-#[serde(rename_all = "snake_case")]
-pub enum ComponentType {
-    /// Control registers
-    Ctrl,
-    /// Integer registers
-    Int,
-    /// Floating point registers
-    Float,
-}
-
 /// Type of registers allowed
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+#[serde(from = "json::RegisterType")]
 pub enum RegisterType {
     /// Control registers
     Ctrl,
@@ -149,6 +137,7 @@ pub enum RegisterType {
     /// Floating point registers
     Float(FloatType),
 }
+utils::schema_from!(RegisterType, json::RegisterType);
 
 /// Register specification
 #[derive(Deserialize, JsonSchema, Debug, PartialEq, Eq, Clone)]
@@ -664,14 +653,7 @@ impl Architecture<'_> {
     ///
     /// * `type`: type of the file wanted
     pub fn find_reg_files(&self, r#type: RegisterType) -> impl Iterator<Item = &RegisterFile<'_>> {
-        let eq = move |file: &&RegisterFile| match r#type {
-            RegisterType::Int => file.r#type == ComponentType::Int,
-            RegisterType::Ctrl => file.r#type == ComponentType::Ctrl,
-            RegisterType::Float(x) => {
-                file.r#type == ComponentType::Float
-                    && (x == FloatType::Double) == file.double_precision
-            }
-        };
+        let eq = move |file: &&RegisterFile| r#type == file.r#type;
         self.register_files.iter().filter(eq)
     }
 }
