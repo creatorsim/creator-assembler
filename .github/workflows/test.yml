@@ -14,7 +14,7 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install latest tested rust version
         uses: dtolnay/rust-toolchain@1.93
         with:
@@ -33,7 +33,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install wasm-pack
         run: npm install -g wasm-pack # Use precompiled binary
       - name: Run cargo build (debug)
@@ -48,7 +48,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Run cargo test
         run: cargo test --all-features
         env:
@@ -57,7 +57,7 @@ jobs:
     name: MSRV
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install MSRV
         uses: dtolnay/rust-toolchain@1.89
         with:
