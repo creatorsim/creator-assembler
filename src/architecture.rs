@@ -38,13 +38,9 @@ mod json;
 #[derive(Deserialize, JsonSchema, Debug, Clone)]
 pub struct Architecture<'a> {
     /// Metadata about the architecture
-    /// Order of elements is assumed to be name, bits, description, data format,
-    /// memory alignment, main function, passing convention, and sensitive register
-    /// name
     #[serde(borrow)]
     pub config: Config<'a>,
-    /// Register files of the architecture. It's assumed that the first register of
-    /// the first file will contain the program counter
+    /// Register files of the architecture
     pub register_files: Vec<RegisterFile<'a>>,
     /// Instructions allowed
     pub instructions: Vec<Instruction<'a>>,
@@ -52,9 +48,7 @@ pub struct Architecture<'a> {
     pub pseudoinstructions: Vec<Pseudoinstruction<'a>>,
     /// Directives allowed
     pub directives: Vec<Directive<'a>>,
-    /// Memory layout of the architecture. Order of elements is assumed to be optionally ktext
-    /// start/end and kdata start/end, followed by text start/end, data start/end, and stack
-    /// start/end
+    /// Memory layout of the architecture
     pub memory_layout: MemoryLayout,
     /// Interrupt configuration
     #[serde(default)]
