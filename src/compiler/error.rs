@@ -91,7 +91,11 @@ pub enum Kind {
     MissingMainLabel,
     MainInLibrary,
     MainOutsideCode,
-    MemorySectionFull(&'static str),
+    MemorySectionFull {
+        section: &'static str,
+        requested: BigUint,
+        available: BigUint,
+    },
     DataUnaligned {
         address: BigUint,
         alignment: BigUint,
@@ -258,7 +262,7 @@ impl Info for Error<'_> {
             Kind::MissingMainLabel => 13,
             Kind::MainInLibrary => 14,
             Kind::MainOutsideCode => 15,
-            Kind::MemorySectionFull(..) => 16,
+            Kind::MemorySectionFull { .. } => 16,
             Kind::DataUnaligned { .. } => 17,
             Kind::UnallowedStatementType { .. } => 18,
             Kind::UnallowedLabel => 19,
@@ -291,6 +295,13 @@ impl Info for Error<'_> {
             Kind::DuplicateLabel(_, None) => "Label also defined in library".into(),
             Kind::UnallowedStatementType { section: None, .. } => {
                 "No section previously started".into()
+            }
+            Kind::MemorySectionFull {
+                requested,
+                available,
+                ..
+            } => {
+                format!("Element requires {requested} bytes, but only {available} are free")
             }
             _ => return None,
         })
@@ -424,7 +435,9 @@ impl Info for Error<'_> {
                 format!("Consider adding a label called {main} to an instruction")
             }
             Kind::MainInLibrary | Kind::MainOutsideCode => "Label defined here".into(),
-            Kind::MemorySectionFull(..) => "This element doesn't fit in the available space".into(),
+            Kind::MemorySectionFull { .. } => {
+                "This element doesn't fit in the available space".into()
+            }
             Kind::DataUnaligned { .. } => "This value isn't aligned".into(),
             Kind::UnallowedStatementType { .. } => {
                 "This statement can't be used in the current section".into()
@@ -494,8 +507,8 @@ impl Info for Error<'_> {
             Kind::MainOutsideCode => {
                 format!("Main label {main} defined outside of the text segment")
             }
-            Kind::MemorySectionFull(name) => {
-                format!("{name} memory segment is full")
+            Kind::MemorySectionFull { section, .. } => {
+                format!("{section} memory segment isn't big enough")
             }
             Kind::DataUnaligned { address, alignment } => format!(
                 "Data at address {} isn't aligned to size {} nor word size {}",

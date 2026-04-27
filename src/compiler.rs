@@ -2621,25 +2621,40 @@ mod test {
         // Instructions
         assert_eq!(
             compile(".text\nmain: nop\nnop\nnop\nnop\nimm 0, 0, 0"),
-            Err(ErrorKind::MemorySectionFull("Instructions").add_span((28..39).span())),
+            Err(ErrorKind::MemorySectionFull {
+                section: "Instructions",
+                requested: 4u8.into(),
+                available: BigUint::ZERO,
+            }
+            .add_span((28..39).span()),),
         );
         assert_eq!(
             compile(".text\nmain: nop\nnop\nnop\nnop2"),
-            Err(ErrorKind::MemorySectionFull("Instructions").add_span((24..28).span())),
+            Err(ErrorKind::MemorySectionFull {
+                section: "Instructions",
+                requested: 8u8.into(),
+                available: 4u8.into(),
+            }
+            .add_span((24..28).span())),
         );
         // Data directives
-        for (directive, span) in [
-            ("zero 5", 21..22),
-            ("word 0\n.byte 0", 29..30),
-            ("dword 0", 22..23),
-            ("double 0", 23..24),
-            ("string \"1234\"", 23..29),
-            ("stringn \"1234\"\n.stringn \"5\"", 40..43),
-            ("balign 64\n.byte 0", 15..25),
+        for (directive, span, size, available) in [
+            ("zero 5", 21..22, 5u8, 4u8),
+            ("word 0\n.byte 0", 29..30, 1, 0),
+            ("dword 0", 22..23, 8, 4),
+            ("double 0", 23..24, 8, 4),
+            ("string \"1234\"", 23..29, 5, 4),
+            ("stringn \"1234\"\n.stringn \"5\"", 40..43, 1, 0),
+            ("balign 64\n.byte 0", 15..25, 64 - 16 - 12, 4),
         ] {
             assert_eq!(
                 compile(&format!(".data\n.zero 12\n.{directive}\n.text\nmain: nop")),
-                Err(ErrorKind::MemorySectionFull("Data").add_span((span).span())),
+                Err(ErrorKind::MemorySectionFull {
+                    section: "Data",
+                    requested: size.into(),
+                    available: available.into(),
+                }
+                .add_span((span).span())),
                 "{directive}",
             );
         }
@@ -2650,11 +2665,21 @@ mod test {
         let compile = |src| compile_arch(src, include_str!("../tests/architecture_no_kernel.json"));
         assert_eq!(
             compile(".ktext\nfoo: nop\n.text\nmain: nop"),
-            Err(ErrorKind::MemorySectionFull("KernelInstructions").add_span((12..15).span())),
+            Err(ErrorKind::MemorySectionFull {
+                section: "KernelInstructions",
+                requested: 4u8.into(),
+                available: BigUint::ZERO,
+            }
+            .add_span((12..15).span())),
         );
         assert_eq!(
             compile(".kdata\n.zero 1\n.text\nmain: nop"),
-            Err(ErrorKind::MemorySectionFull("KernelData").add_span((13..14).span())),
+            Err(ErrorKind::MemorySectionFull {
+                section: "KernelData",
+                requested: 1u8.into(),
+                available: BigUint::ZERO,
+            }
+            .add_span((13..14).span())),
         );
     }
 

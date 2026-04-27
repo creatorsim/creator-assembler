@@ -30,7 +30,7 @@ use crate::architecture::NonEmptyRangeInclusive;
 pub struct Section {
     /// Address of the start of the section
     address: BigUint,
-    /// Address of the end of the section
+    /// Address of the end of the section (inclusive)
     end: BigUint,
     /// Name of the section
     name: &'static str,
@@ -80,7 +80,11 @@ impl Section {
         let res = self.address.clone();
         self.address += size;
         if self.address > &self.end + 1u8 {
-            Err(ErrorKind::MemorySectionFull(self.name))
+            Err(ErrorKind::MemorySectionFull {
+                section: self.name,
+                requested: size.clone(),
+                available: &self.end + 1u8 - res,
+            })
         } else {
             Ok(res)
         }
@@ -155,8 +159,12 @@ mod test {
         assert_eq!(section.try_reserve(&one), Ok(2u8.into()));
         assert_eq!(section.try_reserve(&one), Ok(3u8.into()));
         assert_eq!(
-            section.try_reserve(&1u8.into()),
-            Err(ErrorKind::MemorySectionFull("test"))
+            section.try_reserve(&one),
+            Err(ErrorKind::MemorySectionFull {
+                section: "test",
+                requested: one,
+                available: BigUint::ZERO
+            })
         );
     }
 
@@ -166,13 +174,21 @@ mod test {
         let mut section = Section::new("test", Some(&range(0, 0)));
         assert_eq!(section.try_reserve(&one), Ok(BigUint::ZERO));
         assert_eq!(
-            section.try_reserve(&1u8.into()),
-            Err(ErrorKind::MemorySectionFull("test"))
+            section.try_reserve(&one),
+            Err(ErrorKind::MemorySectionFull {
+                section: "test",
+                requested: one.clone(),
+                available: BigUint::ZERO
+            })
         );
         let mut section = Section::new("test", None);
         assert_eq!(
-            section.try_reserve(&1u8.into()),
-            Err(ErrorKind::MemorySectionFull("test"))
+            section.try_reserve(&one),
+            Err(ErrorKind::MemorySectionFull {
+                section: "test",
+                requested: one,
+                available: BigUint::ZERO
+            })
         );
     }
 
@@ -186,7 +202,11 @@ mod test {
             assert_eq!(section.try_reserve(&four), Ok((i + 4).into()));
             assert_eq!(
                 section.try_reserve(&four),
-                Err(ErrorKind::MemorySectionFull("test2"))
+                Err(ErrorKind::MemorySectionFull {
+                    section: "test2",
+                    requested: four.clone(),
+                    available: (4 - i).into()
+                })
             );
         }
     }
@@ -201,7 +221,11 @@ mod test {
             assert_eq!(section.try_reserve(&six), Ok((i + 6).into()));
             assert_eq!(
                 section.try_reserve(&six),
-                Err(ErrorKind::MemorySectionFull("test3"))
+                Err(ErrorKind::MemorySectionFull {
+                    section: "test3",
+                    requested: six.clone(),
+                    available: (6 - i).into()
+                })
             );
         }
     }
@@ -238,7 +262,11 @@ mod test {
             assert_eq!(section.try_reserve(&i.into()), Ok(BigUint::ZERO));
             assert_eq!(
                 section.try_align(&four),
-                Err(ErrorKind::MemorySectionFull("test6"))
+                Err(ErrorKind::MemorySectionFull {
+                    section: "test6",
+                    requested: (4 - i).into(),
+                    available: (3 - i).into()
+                })
             );
         }
     }
